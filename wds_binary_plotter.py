@@ -17,6 +17,7 @@ MODIFICATIONS:
 2. Added warnings for non-unique identifiers
 3. When line number is provided, uses that specific row directly
 4. Added inset plot showing current position distribution with 1, 2, 3 sigma contours
+5. Added dark mode theme for better website integration
 """
 
 import sys
@@ -27,6 +28,9 @@ import matplotlib.patches as patches
 from matplotlib.patches import Ellipse
 from scipy import stats
 import binary_calculator as bc
+
+# Set dark theme
+plt.style.use('dark_background')
 
 def format_error_value(value, threshold=0.001):
     """
@@ -85,8 +89,8 @@ def plot_position_scatter(separations, position_angles, title="Binary Star Posit
     fig, ax = plt.subplots(figsize=(4, 4))
     ax.set_aspect('equal')
 
-    # Scatter plot
-    ax.scatter(x, y, alpha=0.6, s=15, c='blue')
+    # Scatter plot - using cyan for better visibility on dark background
+    ax.scatter(x, y, alpha=0.6, s=15, c='cyan', edgecolors='none')
 
     # Median position
     ax.plot(x_median, y_median, 'ro', markersize=8, label='Median')
@@ -108,7 +112,7 @@ def plot_position_scatter(separations, position_angles, title="Binary Star Posit
     print(f"Sample size: {len(separations)}")
 
     if save_fig:
-        plt.savefig(f'{title.replace(" ", "_").lower()}.png', dpi=300, bbox_inches='tight')
+        plt.savefig(f'{title.replace(" ", "_").lower()}.png', dpi=300, bbox_inches='tight', facecolor='#0d1117')
         print(f"Figure saved")
 
     plt.show()
@@ -128,6 +132,9 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     # Create figure with specific size and DPI
     fig, ax = plt.subplots(figsize=(12, 10))
     ax.set_aspect('equal')
+    
+    # Increase font sizes for better readability
+    ax.tick_params(axis='both', which='major', labelsize=12)
 
     # Calculate plot limits based on maximum separation
     max_sep = np.nanmax(separations)
@@ -144,7 +151,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     # Set alpha based on number of samples for good visibility
     alpha = min(0.3, 100 / n_samples)
 
-    # Plot each orbit
+    # Plot each orbit - using cyan for better visibility on dark background
     for i in range(n_samples):
         # Handle position angle wrapping for smooth curves
         pa = position_angles[i, :].copy()
@@ -160,7 +167,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         # Only plot if we have valid data points
         valid_mask = np.isfinite(x) & np.isfinite(y)
         if np.sum(valid_mask) > 2:
-            ax.plot(x[valid_mask], y[valid_mask], 'b-', alpha=alpha, linewidth=0.5)
+            ax.plot(x[valid_mask], y[valid_mask], 'c-', alpha=alpha, linewidth=0.8)
 
     # Overlay current position uncertainty cloud if provided
     if current_positions is not None:
@@ -207,9 +214,9 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         x_current = current_sep * np.cos(theta_current_rad)
         y_current = current_sep * np.sin(theta_current_rad)
 
-        # Plot current position cloud
-        ax.scatter(x_current, y_current, alpha=0.4, s=8, c='orange',
-                  label=f'Current position ({current_epoch:.3f})', zorder=5)
+        # Plot current position cloud - using orange for good contrast
+        ax.scatter(x_current, y_current, alpha=0.4, s=12, c='orange',
+                  label=f'Current position ({current_epoch:.3f})', zorder=5, edgecolors='none')
 
         # Add text box with current position statistics outside the plot
         # Convert decimal year to calendar date
@@ -242,14 +249,15 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
                      f'Calculated: {calc_time}')
 
         # Position text box in bottom right outside the plot
+        # Using dark background for the text box
         ax.text(1.02, 0.02, stats_text, transform=ax.transAxes,
-                fontsize=9, verticalalignment='bottom', horizontalalignment='left',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor='lightblue', alpha=0.8))
+                fontsize=11, verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.9))
 
         # Create inset axes for separation vs PA plot
         # Position it between the legend and the stats text box
         # Moved further right to avoid overlap with main plot
-        ax_inset = fig.add_axes([0.72, 0.4, 0.25, 0.25])  # [left, bottom, width, height]
+        ax_inset = fig.add_axes([0.72, 0.4, 0.25, 0.25], facecolor='#161b22')
 
         # Handle wraparound: shift data to center around 180° to avoid edge effects
         # This prevents artificial gaps at 0°/360°
@@ -257,16 +265,16 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         pa_median_shifted = (pa_median + 180) % 360
 
         # Plot points in separation/PA space (shifted)
-        ax_inset.scatter(pa_shifted, current_sep, alpha=0.6, s=10, c='orange')
+        ax_inset.scatter(pa_shifted, current_sep, alpha=0.6, s=20, c='orange', edgecolors='none')
 
         # Add median point
-        ax_inset.plot(pa_median_shifted, sep_median, 'ko', markersize=6, label='Median')
+        ax_inset.plot(pa_median_shifted, sep_median, 'wo', markersize=8, label='Median', markeredgecolor='none')
 
         # Set inset labels and styling
-        ax_inset.set_xlabel('Position Angle (°)', fontsize=8)
-        ax_inset.set_ylabel('Separation (arcsec)', fontsize=8)
-        ax_inset.set_title('Current Position Distribution', fontsize=9)
-        ax_inset.tick_params(axis='both', which='major', labelsize=7)
+        ax_inset.set_xlabel('Position Angle (°)', fontsize=10)
+        ax_inset.set_ylabel('Separation (arcsec)', fontsize=10)
+        ax_inset.set_title('Current Position Distribution', fontsize=11)
+        ax_inset.tick_params(axis='both', which='major', labelsize=9)
         ax_inset.grid(True, alpha=0.3, linewidth=0.5)
 
         # Calculate x-axis limits to zoom in on the data
@@ -292,25 +300,33 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
             xtick_labels.append(f'{original_pa:.0f}°')
 
         ax_inset.set_xticks(xticks)
-        ax_inset.set_xticklabels(xtick_labels, fontsize=7)
+        ax_inset.set_xticklabels(xtick_labels, fontsize=9)
 
         # Set reasonable y-axis limits with some padding
         sep_range = current_sep.max() - current_sep.min()
         sep_padding = sep_range * 0.2 if sep_range > 0 else 0.001
         ax_inset.set_ylim(current_sep.min() - sep_padding, current_sep.max() + sep_padding)
 
-        # Add border to inset
+        # Add border to inset with subtle color
         for spine in ax_inset.spines.values():
-            spine.set_edgecolor('black')
+            spine.set_edgecolor('#3d4248')
             spine.set_linewidth(1)
 
-    # Primary star at origin
-    ax.plot(0, 0, 'yo', markersize=10, label='Primary')
+    # Primary star at origin - using yellow/gold color
+    ax.plot(0, 0, 'o', color='gold', markersize=12, label='Primary', markeredgecolor='none')
+
+    ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14)
+    ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14)
+    ax.set_title(title, fontsize=16)
+    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329', 
+             edgecolor='#3d4248', fontsize=12, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linewidth=0.8)
+    ax.invert_xaxis()
 
     ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West')
     ax.set_ylabel('South ← Δδ (arcsec) → North')
     ax.set_title(title)
-    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left')
+    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329', edgecolor='#3d4248')
     ax.grid(True, alpha=0.3)
     ax.invert_xaxis()
 
@@ -318,7 +334,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     plt.subplots_adjust(left=0.1, right=0.62, top=0.95, bottom=0.05)
 
     # Set DPI for better scaling on screen
-    fig.set_dpi(400)
+    fig.set_dpi(100)  # Use matplotlib default for display
 
     print(f"Plotted {n_samples} orbital tracks over {n_epochs} epochs")
     if current_positions is not None:
@@ -369,7 +385,9 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         print(f"  Position Angle: {pa_median:.2f} ± {format_error_value(pa_std)}° (circular stats)")
 
     if save_fig:
-        plt.savefig(f'{title.replace(" ", "_").lower()}.png', dpi=300, bbox_inches='tight')
+        # Save with dark background at higher DPI
+        plt.savefig(f'{title.replace(" ", "_").lower()}.png', dpi=600, bbox_inches='tight', 
+                   facecolor='#0d1117', edgecolor='none')
         print(f"Figure saved")
 
     plt.show()
