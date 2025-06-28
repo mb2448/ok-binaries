@@ -294,17 +294,29 @@ def main():
         format="%.0f°"
     )
     
-    # Period filter
+    # Period filter with logarithmic scale
     st.sidebar.subheader("Orbital Properties")
     period_min = float(df['period_years'].min())
     period_max = float(df['period_years'].max())
-    period_range = st.sidebar.slider(
-        "Period (years)",
-        min_value=period_min,
-        max_value=min(period_max, 1000.0),  # Cap at 1000 for UI
-        value=(period_min, min(period_max, 1000.0)),
-        step=1.0
+    
+    # Use logarithmic scale for period
+    log_period_min = np.log10(max(period_min, 0.1))  # Avoid log(0)
+    log_period_max = np.log10(min(period_max, 10000.0))  # Cap at 10000 years
+    
+    log_period_range = st.sidebar.slider(
+        "Period (years) - Log Scale",
+        min_value=log_period_min,
+        max_value=log_period_max,
+        value=(log_period_min, log_period_max),
+        step=0.01,
+        format="%.2f"
     )
+    
+    # Convert back from log scale
+    period_range = (10**log_period_range[0], 10**log_period_range[1])
+    
+    # Display the actual values
+    st.sidebar.text(f"Range: {period_range[0]:.1f} - {period_range[1]:.1f} years")
     
     # Magnitude filters
     st.sidebar.subheader("Magnitudes")
@@ -324,17 +336,29 @@ def main():
         step=0.1
     )
     
-    # Separation filter
+    # Separation filter with logarithmic scale
     st.sidebar.subheader("Current Position")
+    sep_min = max(df['separation_current'].min(), 0.001)  # Minimum 1 milliarcsec
     sep_max = float(df['separation_current'].max())
-    sep_range = st.sidebar.slider(
-        "Separation (arcsec)",
-        min_value=0.0,
-        max_value=min(sep_max, 50.0),  # Cap at 50" for UI
-        value=(0.0, min(sep_max, 50.0)),
-        step=0.1,
-        format="%.1f″"
+    
+    # Use logarithmic scale for separation
+    log_sep_min = np.log10(sep_min)
+    log_sep_max = np.log10(min(sep_max, 100.0))  # Cap at 100 arcsec
+    
+    log_sep_range = st.sidebar.slider(
+        "Separation (arcsec) - Log Scale",
+        min_value=log_sep_min,
+        max_value=log_sep_max,
+        value=(log_sep_min, log_sep_max),
+        step=0.01,
+        format="%.2f"
     )
+    
+    # Convert back from log scale
+    sep_range = (10**log_sep_range[0], 10**log_sep_range[1])
+    
+    # Display the actual values
+    st.sidebar.text(f"Range: {sep_range[0]:.3f} - {sep_range[1]:.1f} arcsec")
     
     # Position angle error filter
     pa_error_max = st.sidebar.slider(
