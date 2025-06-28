@@ -267,11 +267,15 @@ def main():
         with col2:
             st.info(f"📅 Date: {last_update.strftime('%Y-%m-%d')}")
 
+    # Initialize counter for widget keys
+    if 'key_counter' not in st.session_state:
+        st.session_state.key_counter = 0
+
     # Sidebar filters
     st.sidebar.header("Filters")
 
     # Search box
-    search_term = st.sidebar.text_input("Search", placeholder="WDS, discoverer, HIP#, HD#...")
+    search_term = st.sidebar.text_input("Search", placeholder="WDS, discoverer, HIP#, HD#...", key=f"search_box_{st.session_state.key_counter}")
 
     # RA/Dec filters
     st.sidebar.subheader("Position")
@@ -282,7 +286,8 @@ def main():
         max_value=24.0,
         value=(0.0, 24.0),
         step=0.1,
-        format="%.1fh"
+        format="%.1fh",
+        key=f"ra_slider_{st.session_state.key_counter}"
     )
 
     dec_range = st.sidebar.slider(
@@ -291,7 +296,8 @@ def main():
         max_value=90.0,
         value=(-90.0, 90.0),
         step=1.0,
-        format="%.0f°"
+        format="%.0f°",
+        key=f"dec_slider_{st.session_state.key_counter}"
     )
 
     # Period filter with logarithmic scale
@@ -315,7 +321,8 @@ def main():
         "Period (years)",
         options=period_values,
         value=(period_values[default_min_idx], period_values[default_max_idx]),
-        format_func=lambda x: f"{x:.2f}" if x < 10 else f"{x:.1f}" if x < 100 else f"{x:.0f}"
+        format_func=lambda x: f"{x:.2f}" if x < 10 else f"{x:.1f}" if x < 100 else f"{x:.0f}",
+        key=f"period_slider_{st.session_state.key_counter}"
     )
 
     # Magnitude filters
@@ -325,7 +332,8 @@ def main():
         min_value=float(df['v1_mag'].min()),
         max_value=float(df['v1_mag'].max()),
         value=(float(df['v1_mag'].min()), float(df['v1_mag'].max())),
-        step=0.1
+        step=0.1,
+        key=f"v1_slider_{st.session_state.key_counter}"
     )
 
     v2_range = st.sidebar.slider(
@@ -333,7 +341,8 @@ def main():
         min_value=float(df['v2_mag'].min()),
         max_value=float(df['v2_mag'].max()),
         value=(float(df['v2_mag'].min()), float(df['v2_mag'].max())),
-        step=0.1
+        step=0.1,
+        key=f"v2_slider_{st.session_state.key_counter}"
     )
 
     # Separation filter with logarithmic scale
@@ -357,7 +366,8 @@ def main():
         "Separation (arcsec)",
         options=sep_values,
         value=(sep_values[default_min_idx], sep_values[default_max_idx]),
-        format_func=lambda x: f"{x:.3f}″" if x < 1 else f"{x:.1f}″"
+        format_func=lambda x: f"{x:.3f}″" if x < 1 else f"{x:.1f}″",
+        key=f"sep_slider_{st.session_state.key_counter}"
     )
 
     # Position angle error filter
@@ -367,7 +377,8 @@ def main():
         max_value=180.0,
         value=180.0,
         step=1.0,
-        help="Maximum position angle uncertainty (0 = no limit)"
+        help="Maximum position angle uncertainty (0 = no limit)",
+        key=f"pa_error_slider_{st.session_state.key_counter}"
     )
 
     # Separation error filter
@@ -378,7 +389,8 @@ def main():
         value=1.0,
         step=0.01,
         format="%.2f″",
-        help="Maximum separation uncertainty (0 = no limit)"
+        help="Maximum separation uncertainty (0 = no limit)",
+        key=f"sep_error_slider_{st.session_state.key_counter}"
     )
 
     # Grade filter
@@ -388,8 +400,16 @@ def main():
         "Orbit grades",
         options=unique_grades,
         default=unique_grades,
-        help="1=definitive, 2=good, 3=reliable, 4=preliminary, 5=indeterminate"
+        help="1=definitive, 2=good, 3=reliable, 4=preliminary, 5=indeterminate",
+        key=f"grade_select_{st.session_state.key_counter}"
     )
+
+    # Reset filters button
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔄 Reset All Filters", type="secondary", use_container_width=True):
+        # Increment the key counter to force all widgets to reset
+        st.session_state.key_counter += 1
+        st.rerun()
 
     # Apply filters
     filtered_df = df.copy()
