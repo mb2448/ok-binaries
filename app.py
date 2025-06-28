@@ -299,24 +299,24 @@ def main():
     period_min = float(df['period_years'].min())
     period_max = float(df['period_years'].max())
     
-    # Use logarithmic scale for period
-    log_period_min = np.log10(max(period_min, 0.1))  # Avoid log(0)
-    log_period_max = np.log10(min(period_max, 10000.0))  # Cap at 10000 years
-    
-    log_period_range = st.sidebar.slider(
-        "Period (years) - Log Scale",
-        min_value=log_period_min,
-        max_value=log_period_max,
-        value=(log_period_min, log_period_max),
-        step=0.01,
-        format="%.2f"
+    # Create logarithmically spaced values
+    period_values = np.logspace(
+        np.log10(max(period_min, 0.1)), 
+        np.log10(min(period_max, 10000.0)), 
+        num=100
     )
+    period_values = np.unique(np.round(period_values, 2))  # Round and remove duplicates
     
-    # Convert back from log scale
-    period_range = (10**log_period_range[0], 10**log_period_range[1])
+    # Find closest values to min and max for default
+    default_min_idx = np.argmin(np.abs(period_values - period_min))
+    default_max_idx = np.argmin(np.abs(period_values - min(period_max, 10000.0)))
     
-    # Display the actual values
-    st.sidebar.text(f"Range: {period_range[0]:.1f} - {period_range[1]:.1f} years")
+    period_range = st.sidebar.select_slider(
+        "Period (years)",
+        options=period_values,
+        value=(period_values[default_min_idx], period_values[default_max_idx]),
+        format_func=lambda x: f"{x:.2f}" if x < 10 else f"{x:.1f}" if x < 100 else f"{x:.0f}"
+    )
     
     # Magnitude filters
     st.sidebar.subheader("Magnitudes")
@@ -338,27 +338,27 @@ def main():
     
     # Separation filter with logarithmic scale
     st.sidebar.subheader("Current Position")
-    sep_min = max(df['separation_current'].min(), 0.001)  # Minimum 1 milliarcsec
+    sep_min = max(df['separation_current'].min(), 0.001)
     sep_max = float(df['separation_current'].max())
     
-    # Use logarithmic scale for separation
-    log_sep_min = np.log10(sep_min)
-    log_sep_max = np.log10(min(sep_max, 100.0))  # Cap at 100 arcsec
-    
-    log_sep_range = st.sidebar.slider(
-        "Separation (arcsec) - Log Scale",
-        min_value=log_sep_min,
-        max_value=log_sep_max,
-        value=(log_sep_min, log_sep_max),
-        step=0.01,
-        format="%.2f"
+    # Create logarithmically spaced values
+    sep_values = np.logspace(
+        np.log10(sep_min), 
+        np.log10(min(sep_max, 100.0)), 
+        num=100
     )
+    sep_values = np.unique(np.round(sep_values, 4))  # Round to 4 decimals for arcsec
     
-    # Convert back from log scale
-    sep_range = (10**log_sep_range[0], 10**log_sep_range[1])
+    # Find closest values for default
+    default_min_idx = np.argmin(np.abs(sep_values - sep_min))
+    default_max_idx = np.argmin(np.abs(sep_values - min(sep_max, 100.0)))
     
-    # Display the actual values
-    st.sidebar.text(f"Range: {sep_range[0]:.3f} - {sep_range[1]:.1f} arcsec")
+    sep_range = st.sidebar.select_slider(
+        "Separation (arcsec)",
+        options=sep_values,
+        value=(sep_values[default_min_idx], sep_values[default_max_idx]),
+        format_func=lambda x: f"{x:.3f}″" if x < 1 else f"{x:.1f}″"
+    )
     
     # Position angle error filter
     pa_error_max = st.sidebar.slider(
