@@ -32,6 +32,21 @@ import binary_calculator as bc
 # Set dark theme
 plt.style.use('dark_background')
 
+# Additional settings for crisper rendering
+plt.rcParams['figure.dpi'] = 100
+plt.rcParams['savefig.dpi'] = 600
+plt.rcParams['font.size'] = 12
+plt.rcParams['axes.linewidth'] = 1.5
+plt.rcParams['xtick.major.width'] = 1.5
+plt.rcParams['ytick.major.width'] = 1.5
+plt.rcParams['xtick.minor.width'] = 1.0
+plt.rcParams['ytick.minor.width'] = 1.0
+plt.rcParams['grid.linewidth'] = 0.8
+plt.rcParams['grid.alpha'] = 0.3
+plt.rcParams['lines.antialiased'] = True
+plt.rcParams['patch.antialiased'] = True
+plt.rcParams['text.antialiased'] = True
+
 def format_error_value(value, threshold=0.001):
     """
     Format error values appropriately, showing small values in scientific notation.
@@ -130,7 +145,8 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     n_samples, n_epochs = separations.shape
 
     # Create figure with specific size and DPI
-    fig, ax = plt.subplots(figsize=(12, 10))
+    # Smaller figure size but higher DPI for web display
+    fig, ax = plt.subplots(figsize=(10, 8))
     ax.set_aspect('equal')
     
     # Increase font sizes for better readability
@@ -167,7 +183,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         # Only plot if we have valid data points
         valid_mask = np.isfinite(x) & np.isfinite(y)
         if np.sum(valid_mask) > 2:
-            ax.plot(x[valid_mask], y[valid_mask], 'c-', alpha=alpha, linewidth=0.8)
+            ax.plot(x[valid_mask], y[valid_mask], 'c-', alpha=alpha, linewidth=1.0, antialiased=True)
 
     # Overlay current position uncertainty cloud if provided
     if current_positions is not None:
@@ -215,8 +231,8 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         y_current = current_sep * np.sin(theta_current_rad)
 
         # Plot current position cloud - using orange for good contrast
-        ax.scatter(x_current, y_current, alpha=0.4, s=12, c='orange',
-                  label=f'Current position ({current_epoch:.3f})', zorder=5, edgecolors='none')
+        ax.scatter(x_current, y_current, alpha=0.5, s=15, c='orange',
+                  label=f'Current position ({current_epoch:.3f})', zorder=5, edgecolors='none', rasterized=False)
 
         # Add text box with current position statistics outside the plot
         # Convert decimal year to calendar date
@@ -313,21 +329,14 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
             spine.set_linewidth(1)
 
     # Primary star at origin - using yellow/gold color
-    ax.plot(0, 0, 'o', color='gold', markersize=12, label='Primary', markeredgecolor='none')
+    ax.plot(0, 0, 'o', color='gold', markersize=14, label='Primary', markeredgecolor='none', markeredgewidth=0)
 
-    ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14)
-    ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14)
-    ax.set_title(title, fontsize=16)
+    ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14, fontweight='medium')
+    ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14, fontweight='medium')
+    ax.set_title(title, fontsize=16, fontweight='bold')
     ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329', 
              edgecolor='#3d4248', fontsize=12, framealpha=0.9)
-    ax.grid(True, alpha=0.3, linewidth=0.8)
-    ax.invert_xaxis()
-
-    ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West')
-    ax.set_ylabel('South ← Δδ (arcsec) → North')
-    ax.set_title(title)
-    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329', edgecolor='#3d4248')
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, alpha=0.3, linewidth=0.8, antialiased=True)
     ax.invert_xaxis()
 
     # Adjust layout to make room for text boxes and inset on the right
@@ -385,10 +394,10 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
         print(f"  Position Angle: {pa_median:.2f} ± {format_error_value(pa_std)}° (circular stats)")
 
     if save_fig:
-        # Save with dark background at higher DPI
-        plt.savefig(f'{title.replace(" ", "_").lower()}.png', dpi=600, bbox_inches='tight', 
-                   facecolor='#0d1117', edgecolor='none')
-        print(f"Figure saved")
+        # Save as SVG for perfect scaling
+        plt.savefig(f'{title.replace(" ", "_").lower()}.svg', format='svg', bbox_inches='tight', 
+                   facecolor='#0d1117', edgecolor='none', pad_inches=0.1)
+        print(f"Figure saved as SVG")
 
     plt.show()
 

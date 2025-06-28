@@ -222,8 +222,22 @@ def plot_binary_star(row, csv_path):
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-        # The script creates a file like "00182+7257_orbit_uncertainty.png"
-        # Look for the most recently created PNG file
+        # Look for SVG files first (better quality)
+        svg_files = glob.glob('*.svg')
+        if svg_files:
+            # Get the most recent SVG file
+            latest_svg = max(svg_files, key=os.path.getctime)
+            
+            # Read and return the SVG content
+            with open(latest_svg, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+            
+            # Clean up the SVG file after loading
+            os.remove(latest_svg)
+            
+            return ('svg', svg_content)
+        
+        # Fall back to PNG if no SVG found
         png_files = glob.glob('*.png')
         if png_files:
             # Get the most recent PNG file
@@ -235,23 +249,27 @@ def plot_binary_star(row, csv_path):
             # Optionally clean up the PNG file after loading
             # os.remove(latest_png)
 
-            return image
+            return ('png', image)
         else:
             st.error("No plot file was generated")
             if result.stderr:
                 st.error(f"Script output: {result.stderr}")
-            return None
+            return (None, None)
 
     except subprocess.CalledProcessError as e:
         st.error(f"Error running plotter: {e.stderr}")
-        return None
+        return (None, None)
     except Exception as e:
         st.error(f"Error: {str(e)}")
-        return None
+        return (None, None)
 
 # Main app
 def main():
     st.title("🌟🌟 OK Binary Star Catalog")
+
+    # Initialize counter for widget keys
+    if 'key_counter' not in st.session_state:
+        st.session_state.key_counter = 0
 
     # Load data
     df, last_update, file_path = load_data()
@@ -266,10 +284,6 @@ def main():
             st.info(f"📊 Data from: {os.path.basename(file_path)}")
         with col2:
             st.info(f"📅 Date: {last_update.strftime('%Y-%m-%d')}")
-
-    # Initialize counter for widget keys
-    if 'key_counter' not in st.session_state:
-        st.session_state.key_counter = 0
 
     # Sidebar filters
     st.sidebar.header("Filters")
@@ -626,10 +640,18 @@ def main():
             # Generate plot
             with st.spinner("Generating orbit plot..."):
                 try:
-                    image = plot_binary_star(selected_star, file_path)
-                    if image:
-                        st.image(image, use_container_width=True)
+                    plot_type, plot_data = plot_binary_star(selected_star, file_path)
+                    if plot_type == 'svg':
+                        # Display SVG using HTML - maintains perfect quality at any size
+                        st.markdown(
+                            f'<div style="width: 100%; display: flex; justify-content: center;">{plot_data}</div>',
+                            unsafe_allow_html=True
+                        )
+                    elif plot_type == 'png' and plot_data:
+                        # Fall back to PNG display
+                        st.image(plot_data, use_container_width=True)
 
+                    if plot_type:
                         if st.button("Hide Plot"):
                             st.session_state.show_plot = False
                             st.rerun()
