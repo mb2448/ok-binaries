@@ -28,17 +28,37 @@ jobs:
 
     - name: Run WDS parser
       run: |
+        echo "Running WDS parser at $(date)"
         python wds_parser.py
+        echo "Parser completed"
+        ls -la binary_positions_*.csv
 
     - name: Clean up old CSV files
       run: |
         # Keep only the 7 most recent CSV files
+        echo "Files before cleanup:"
+        ls -la binary_positions_*.csv
         ls -t binary_positions_*.csv | tail -n +8 | xargs -r rm -v
+        echo "Files after cleanup:"
+        ls -la binary_positions_*.csv
+
+    - name: Check for changes
+      id: check_changes
+      run: |
+        git add binary_positions_*.csv
+        if git diff --staged --quiet; then
+          echo "No changes detected"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          git diff --staged --name-only
+        fi
 
     - name: Commit and push if changed
+      if: steps.check_changes.outputs.changed == 'true'
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add binary_positions_*.csv
-        git diff --staged --quiet || (git commit -m "Update binary positions for $(date +'%Y-%m-%d')" && git push)
-
+        git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
+        git push
