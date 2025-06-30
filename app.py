@@ -64,7 +64,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
+@st.cache_data(ttl=3600) #Cache ofr one hour.
 def load_data():
     """Load the CSV data and cache it"""
     # Look for files matching the pattern binary_positions_YYYY-MM-DD.csv
@@ -227,16 +227,16 @@ def plot_binary_star(row, csv_path):
         if svg_files:
             # Get the most recent SVG file
             latest_svg = max(svg_files, key=os.path.getctime)
-            
+
             # Read and return the SVG content
             with open(latest_svg, 'r', encoding='utf-8') as f:
                 svg_content = f.read()
-            
+
             # Clean up the SVG file after loading
             os.remove(latest_svg)
-            
+
             return ('svg', svg_content)
-        
+
         # Fall back to PNG if no SVG found
         png_files = glob.glob('*.png')
         if png_files:
