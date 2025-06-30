@@ -247,7 +247,7 @@ def plot_binary_star(row, csv_path):
             image = Image.open(latest_png)
 
             # Optionally clean up the PNG file after loading
-            # os.remove(latest_png)
+            os.remove(latest_png)
 
             return ('png', image)
         else:
