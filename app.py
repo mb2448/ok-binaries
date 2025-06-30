@@ -277,7 +277,57 @@ def plot_binary_star(row, csv_path, plot_datetime=None):
 
 # Main app
 def main():
-    st.title("🌟🌟 OK Binary Star Catalog")
+    st.title("🌟🌟 😐 OK Binary Star Catalog")
+
+    # About button in header
+    col1, col2, col3 = st.columns([6, 1, 1])
+    with col3:
+        if st.button("ℹ️ About", key="about_button"):
+            st.session_state.show_about = not st.session_state.get('show_about', False)
+
+    # About dialog
+    if st.session_state.get('show_about', False):
+        with st.container():
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 3, 1])
+            with col2:
+                st.markdown("### About the OK Binary Star Catalog")
+                st.markdown("""
+                **The OK Binary Star Catalog** provides real-time orbital calculations
+                for binary star systems from the Washington Double Star (WDS) [Sixth Catalog
+                of Orbits of Visual Binary Stars](https://www.astro.gsu.edu/wds/orb6.html),
+                maintained by the US Naval Observatory.  The stars included in this app are ones that have errors reported for all
+                their orbital elements.
+
+                The purpose of this catalog is to provide decent calibration binaries for
+                plate scale and orientation (eg, North) for astronomical instruments. The
+                elements in the table are updated once per day.  Plots can be made of up
+                to date positions, or for any date between 1500-2500.
+
+
+                #### How to use:
+                1. **Browse or search** the table (search includes WDS, HD, HIP numbers and notes)
+                2. **Click a star** to see its orbital elements
+                3. **Generate a plot** to visualize the orbit
+                4. **Set a custom date/time** to see past or future positions
+                5. **Use filters** to find stars by position, magnitude, or orbital properties
+
+                ***Suggested usage:*** filter by RA/Dec needs and then sort by
+                position angle error (σ_θ) to find the best calibration binaries.
+
+                #### Technical Details:
+                - Position angles follow the IAU convention (North = 0°, East = 90°)
+                - All times are in UTC
+                - Uncertainties are calculated by sampling from the errors in the orbital elements
+                  (Gaussian assumed) and computing a full Keplerian orbit, then evaluating each orbit at the specified date.
+
+                Please direct bug reports, feature requests, etc [here](https://github.com/mb2448/ok-binaries/issues)
+                """)
+
+                if st.button("Close", key="close_about"):
+                    st.session_state.show_about = False
+                    st.rerun()
+            st.markdown("---")
 
     # Initialize counter for widget keys
     if 'key_counter' not in st.session_state:
@@ -288,14 +338,6 @@ def main():
 
     if df is None:
         st.stop()
-
-    # Display last update time and filename
-    if last_update:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.info(f"📊 Data from: {os.path.basename(file_path)}")
-        with col2:
-            st.info(f"📅 Date: {last_update.strftime('%Y-%m-%d')}")
 
     # Sidebar filters
     st.sidebar.header("Filters")
@@ -501,7 +543,8 @@ def main():
             filtered_df['wds_designation'].astype(str).str.contains(search_upper, na=False) |
             filtered_df['discoverer_designation'].astype(str).str.contains(search_upper, na=False) |
             filtered_df['hip_number'].astype(str).str.contains(search_term, na=False) |
-            filtered_df['hd_number'].astype(str).str.contains(search_term, na=False)
+            filtered_df['hd_number'].astype(str).str.contains(search_term, na=False) |
+            filtered_df['notes'].astype(str).str.contains(search_term, case=False, na=False)
         )
         filtered_df = filtered_df[mask]
 
@@ -599,6 +642,10 @@ def main():
             selected_index = filtered_df.index[selected_indices.selection.rows[0]]
             selected_star = df.loc[selected_index]
 
+        # Display data source info below the table
+        if last_update:
+            st.caption(f"📊 Data from: {os.path.basename(file_path)}")
+
     with col2:
         st.subheader("Star Details")
 
@@ -625,8 +672,8 @@ def main():
                     plot_date = st.date_input(
                         "Date",
                         value=st.session_state.plot_date,
-                        min_value=datetime(1500, 1, 1).date(),
-                        max_value=datetime(2500, 12, 31).date(),
+                        min_value=datetime(1900, 1, 1).date(),
+                        max_value=datetime(2100, 12, 31).date(),
                         key="date_picker",
                         label_visibility="collapsed"
                     )
