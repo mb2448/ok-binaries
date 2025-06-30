@@ -204,7 +204,7 @@ def display_orbital_elements(star_data):
         st.markdown("### Notes")
         st.write(star_data['notes'])
 
-def plot_binary_star(row, csv_path):
+def plot_binary_star(row, csv_path, plot_datetime=None):
     """Generate orbit plot by calling wds_binary_plotter.py script"""
 
     # Use line number as the identifier since it's guaranteed to be unique
@@ -217,6 +217,18 @@ def plot_binary_star(row, csv_path):
         csv_path,  # Use the actual CSV file path
         identifier
     ]
+
+    # Add date/time if provided
+    if plot_datetime:
+        # Convert to decimal year for the plotter
+        year = plot_datetime.year
+        year_start = datetime(year, 1, 1)
+        year_end = datetime(year + 1, 1, 1)
+        year_elapsed = (plot_datetime - year_start).total_seconds()
+        year_duration = (year_end - year_start).total_seconds()
+        decimal_year = year + (year_elapsed / year_duration)
+
+        cmd.extend(['--epoch', str(decimal_year)])
 
     # Run the command
     try:
@@ -597,15 +609,54 @@ def main():
                 if st.button("Generate Plot", type="primary", use_container_width=True):
                     st.session_state.show_plot = True
                     st.session_state.plot_star_line = int(selected_star['line_number'])
+
+                # Date and time selection
+                st.markdown("#### Plot Date & Time (UTC)")
+
+                # Initialize with current date/time if not in session state
+                if 'plot_date' not in st.session_state:
+                    st.session_state.plot_date = datetime.now().date()
+                if 'plot_time' not in st.session_state:
+                    st.session_state.plot_time = datetime.now().time()
+
+                # Date and time inputs
+                col_date, col_time = st.columns(2)
+                with col_date:
+                    plot_date = st.date_input(
+                        "Date",
+                        value=st.session_state.plot_date,
+                        min_value=datetime(1500, 1, 1).date(),
+                        max_value=datetime(2500, 12, 31).date(),
+                        key="date_picker",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.plot_date = plot_date
+
+                with col_time:
+                    plot_time = st.time_input(
+                        "Time (UTC)",
+                        value=st.session_state.plot_time,
+                        key="time_picker",
+                        label_visibility="collapsed"
+                    )
+                    st.session_state.plot_time = plot_time
+
+                # Reset to now button
+                if st.button("🔄 Reset to Now", type="secondary", use_container_width=True):
+                    st.session_state.plot_date = datetime.now().date()
+                    st.session_state.plot_time = datetime.now().time()
+                    st.rerun()
             else:
                 st.button("Generate Plot", type="primary", use_container_width=True, disabled=True)
+                st.markdown("#### Plot Date & Time (UTC)")
+                st.info("Select a star to enable date/time selection")
 
         # Create a scrollable container for details with fixed height
         details_container = st.container(height=520)  # Match table height
         with details_container:
             if selected_star is not None:
-                # Display star info
-                st.write(f"**{selected_star['wds_designation']}** - {selected_star['discoverer_designation']}")
+                # Display star info with larger font
+                st.markdown(f"### **{selected_star['wds_designation']}** - {selected_star['discoverer_designation']}")
 
                 # Additional identifiers
                 identifiers = []
@@ -640,7 +691,13 @@ def main():
             # Generate plot
             with st.spinner("Generating orbit plot..."):
                 try:
-                    plot_type, plot_data = plot_binary_star(selected_star, file_path)
+                    # Combine date and time into datetime
+                    plot_datetime = datetime.combine(
+                        st.session_state.plot_date,
+                        st.session_state.plot_time
+                    )
+
+                    plot_type, plot_data = plot_binary_star(selected_star, file_path, plot_datetime)
                     if plot_type == 'svg':
                         # Display SVG using HTML - maintains perfect quality at any size
                         st.markdown(

@@ -402,7 +402,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     plt.show()
 
 
-def plot_wds_binary(csv_file, identifier, n_samples=200):
+def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
     """
     Plot binary star from WDS spreadsheet data.
 
@@ -419,6 +419,8 @@ def plot_wds_binary(csv_file, identifier, n_samples=200):
         - HD number (e.g., 'HD 103400' or 'hd 103400')
     n_samples : int
         Number of Monte Carlo samples for plotting
+    epoch : float, optional
+        Decimal year for the plot. If None, uses current date/time
     """
 
     # Load the spreadsheet
@@ -547,7 +549,11 @@ def plot_wds_binary(csv_file, identifier, n_samples=200):
     semimajor_axis = np.maximum(semimajor_axis, 0.000001)
     inclination = np.clip(inclination, 0, 180)
 
-    current_epoch = bc.get_current_decimal_year()
+    # Use provided epoch or current time
+    if epoch is None:
+        current_epoch = bc.get_current_decimal_year()
+    else:
+        current_epoch = epoch
 
     # Plot 1: Current position scatter
     print(f"\nTest 1: Current position scatter plot (epoch {current_epoch:.1f})")
@@ -607,9 +613,10 @@ def main():
     """Main function to handle command line arguments."""
 
     if len(sys.argv) < 3:
-        print("Usage: python wds_binary_plotter.py <csv_file> <identifier>")
+        print("Usage: python wds_binary_plotter.py <csv_file> <identifier> [--epoch <decimal_year>]")
         print("\nExamples:")
         print("  python wds_binary_plotter.py current_binary_positions_2025-06-13.csv 77")
+        print("  python wds_binary_plotter.py current_binary_positions_2025-06-13.csv 77 --epoch 2025.5")
         print("  python wds_binary_plotter.py current_binary_positions_2025-06-13.csv line:77")
         print("  python wds_binary_plotter.py current_binary_positions_2025-06-13.csv 00155-1608")
         print("  python wds_binary_plotter.py current_binary_positions_2025-06-13.csv STF2272AB")
@@ -620,11 +627,23 @@ def main():
         return
 
     csv_file = sys.argv[1]
-    # Join all remaining arguments to handle identifiers with spaces
-    identifier = ' '.join(sys.argv[2:])
+    
+    # Find where the identifier ends and optional arguments begin
+    identifier_parts = []
+    epoch = None
+    i = 2
+    while i < len(sys.argv):
+        if sys.argv[i] == '--epoch' and i + 1 < len(sys.argv):
+            epoch = float(sys.argv[i + 1])
+            break
+        else:
+            identifier_parts.append(sys.argv[i])
+        i += 1
+    
+    identifier = ' '.join(identifier_parts)
 
     try:
-        plot_wds_binary(csv_file, identifier)
+        plot_wds_binary(csv_file, identifier, epoch=epoch)
     except Exception as e:
         print(f"Error: {e}")
 
