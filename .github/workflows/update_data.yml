@@ -17,8 +17,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        persist-credentials: true  # Add this
-        fetch-depth: 0  # Add this
+        persist-credentials: true
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -50,5 +50,16 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
+
+        # Pull latest changes
+        git pull origin main
+
+        # Add and commit new files
         git add binary_positions_*.csv
-        git diff --staged --quiet || (git commit -m "Update binary positions for $(date +'%Y-%m-%d')" && git push origin main)
+
+        if ! git diff --staged --quiet; then
+          git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
+          git push origin main
+        else
+          echo "No changes to commit"
+        fi
