@@ -755,15 +755,15 @@ def main():
                         # Fall back to PNG display
                         st.image(plot_data, use_container_width=True)
 
-                    if plot_type:
-                        if st.button("Hide Plot"):
-                            st.session_state.show_plot = False
-                            st.rerun()
+                    #if plot_type:
+                    #    if st.button("Hide Plot"):
+                    #        st.session_state.show_plot = False
+                    #        st.rerun()
                 except Exception as e:
                     st.error(f"Error generating plot: {str(e)}")
-                    if st.button("Dismiss Error"):
-                        st.session_state.show_plot = False
-                        st.rerun()
+                    #if st.button("Dismiss Error"):
+                    #    st.session_state.show_plot = False
+                    #    st.rerun()
 
     # Footer
     st.markdown("---")
