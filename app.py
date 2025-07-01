@@ -204,134 +204,100 @@ def display_orbital_elements(star_data):
         st.markdown("### Notes")
         st.write(star_data['notes'])
 
+
+
 def plot_binary_star(row, csv_path, plot_datetime=None):
-    """Generate orbit plot by calling wds_binary_plotter.py script"""
+    """
+    Generate orbit plot - optimized version that eliminates subprocess overhead.
+    """
 
-    # Check if we can import and use the plotter directly
+    # Try direct function call first (much faster)
     try:
-        # If plotter is already imported, use it directly
-        if 'wds_binary_plotter' in sys.modules:
-            import wds_binary_plotter
-            from io import StringIO
+        # Import the plotter module directly
+        import wds_binary_plotter
 
-            # Create a fake command line argument structure
-            class Args:
-                def __init__(self, csv_file, identifier, epoch=None):
-                    self.csv_file = csv_file
-                    self.identifier = str(identifier)
-                    self.epoch = epoch
+        # Use line number as identifier (guaranteed unique)
+        identifier = str(int(row['line_number']))
 
-            # Convert datetime to decimal year if provided
-            epoch = None
-            if plot_datetime:
-                year = plot_datetime.year
-                year_start = datetime(year, 1, 1)
-                year_end = datetime(year + 1, 1, 1)
-                year_elapsed = (plot_datetime - year_start).total_seconds()
-                year_duration = (year_end - year_start).total_seconds()
-                epoch = year + (year_elapsed / year_duration)
+        # Convert datetime to decimal year if provided
+        epoch = None
+        if plot_datetime:
+            year = plot_datetime.year
+            year_start = datetime(year, 1, 1)
+            year_end = datetime(year + 1, 1, 1)
+            year_elapsed = (plot_datetime - year_start).total_seconds()
+            year_duration = (year_end - year_start).total_seconds()
+            epoch = year + (year_elapsed / year_duration)
 
-            # Temporarily redirect stdout to capture any print statements
-            old_stdout = sys.stdout
-            sys.stdout = StringIO()
+        # Call the new Streamlit-optimized function
+        svg_content = wds_binary_plotter.plot_wds_binary_for_streamlit(
+            csv_path, identifier, epoch
+        )
 
-            try:
-                # Call the plotter directly with the star data
-                wds_binary_plotter.plot_wds_binary(
-                    csv_path,
-                    str(int(row['line_number'])),
-                    epoch=epoch
-                )
-
-                # Look for generated files
-                svg_files = glob.glob('*.svg')
-                if svg_files:
-                    latest_svg = max(svg_files, key=os.path.getctime)
-                    with open(latest_svg, 'r', encoding='utf-8') as f:
-                        svg_content = f.read()
-                    os.remove(latest_svg)
-                    return ('svg', svg_content)
-
-                png_files = glob.glob('*.png')
-                if png_files:
-                    latest_png = max(png_files, key=os.path.getctime)
-                    image = Image.open(latest_png)
-                    os.remove(latest_png)
-                    return ('png', image)
-
-            finally:
-                sys.stdout = old_stdout
-
+        if svg_content:
+            return ('svg', svg_content)
         else:
-            # First time - import it (will be slow but then cached)
-            import wds_binary_plotter
-            # Now call ourselves recursively - will use the fast path
-            return plot_binary_star(row, csv_path, plot_datetime)
+            st.error("No SVG content generated")
+            return (None, None)
 
-    except:
-        # Fall back to subprocess method if direct call fails
-        pass
+    except ImportError as e:
+        st.error(f"Could not import plotter module: {e}")
+        return (None, None)
 
-    # Original subprocess code continues here...
-    # Use line number as the identifier since it's guaranteed to be unique
+    except Exception as e:
+        st.error(f"Error in direct plotting: {e}")
+
+        # Fallback to original subprocess method
+        st.warning("Falling back to subprocess method...")
+        return plot_binary_star_subprocess(row, csv_path, plot_datetime)
+
+
+def plot_binary_star_subprocess(row, csv_path, plot_datetime=None):
+    """
+    Original subprocess-based plotting as fallback.
+    This is your existing plot_binary_star function - keep it as backup.
+    """
+    # (Insert your existing plot_binary_star function code here as fallback)
+
     identifier = str(int(row['line_number']))
 
-    # Build the command
     cmd = [
-        sys.executable,  # Use the same Python interpreter
+        sys.executable,
         'wds_binary_plotter.py',
-        csv_path,  # Use the actual CSV file path
+        csv_path,
         identifier
     ]
 
-    # Add date/time if provided
     if plot_datetime:
-        # Convert to decimal year for the plotter
         year = plot_datetime.year
         year_start = datetime(year, 1, 1)
         year_end = datetime(year + 1, 1, 1)
         year_elapsed = (plot_datetime - year_start).total_seconds()
         year_duration = (year_end - year_start).total_seconds()
         decimal_year = year + (year_elapsed / year_duration)
-
         cmd.extend(['--epoch', str(decimal_year)])
 
-    # Run the command
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-        # Look for SVG files first (better quality)
+        # Look for SVG files first
         svg_files = glob.glob('*.svg')
         if svg_files:
-            # Get the most recent SVG file
             latest_svg = max(svg_files, key=os.path.getctime)
-
-            # Read and return the SVG content
             with open(latest_svg, 'r', encoding='utf-8') as f:
                 svg_content = f.read()
-
-            # Clean up the SVG file after loading
             os.remove(latest_svg)
-
             return ('svg', svg_content)
 
-        # Fall back to PNG if no SVG found
+        # Fall back to PNG
         png_files = glob.glob('*.png')
         if png_files:
-            # Get the most recent PNG file
             latest_png = max(png_files, key=os.path.getctime)
-
-            # Load and return the image
             image = Image.open(latest_png)
-
-            # Optionally clean up the PNG file after loading
             os.remove(latest_png)
-
             return ('png', image)
         else:
-            st.error("No plot file was generated")
-            if result.stderr:
-                st.error(f"Script output: {result.stderr}")
+            st.error("No plot file generated")
             return (None, None)
 
     except subprocess.CalledProcessError as e:
@@ -340,6 +306,8 @@ def plot_binary_star(row, csv_path, plot_datetime=None):
     except Exception as e:
         st.error(f"Error: {str(e)}")
         return (None, None)
+
+
 
 # Main app
 def main():

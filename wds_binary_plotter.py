@@ -608,6 +608,194 @@ def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
 
     plot_orbit_ensemble(orbit_data, current_positions, f"{wds_designation} Orbit Uncertainty", save_fig=True)
 
+def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=None):
+    """
+    Version of plot_wds_binary that returns SVG content directly instead of saving files.
+    Used by Streamlit to avoid subprocess overhead.
+    """
+    import os
+    import io
+
+    # Auto-detect if running on Streamlit Cloud and use fewer samples
+    is_cloud = os.getenv('STREAMLIT_SHARING_MODE') is not None
+    if n_samples is None:
+        n_samples = 50 if is_cloud else 100  # Reduced default for web use
+
+    # Load the spreadsheet (same as original)
+    print(f"Loading data from {csv_file}...")
+    df = pd.read_csv(csv_file)
+
+    # Find the star (copy the exact logic from plot_wds_binary)
+    def normalize_identifier(s):
+        if pd.isna(s):
+            return ""
+        return ' '.join(str(s).upper().split())
+
+    star_data = pd.DataFrame()
+    identifier_normalized = normalize_identifier(identifier)
+
+    # Check if identifier is a line number
+    if identifier.lower().startswith('line:'):
+        try:
+            line_num = int(identifier[5:])
+            star_data = df[df['line_number'] == line_num]
+            if not star_data.empty:
+                print(f"Found star by line number: {line_num}")
+        except ValueError:
+            pass
+    elif identifier.isdigit():
+        try:
+            line_num = int(identifier)
+            star_data = df[df['line_number'] == line_num]
+            if not star_data.empty:
+                print(f"Found star by line number: {line_num}")
+            else:
+                star_data = df[df['hip_number'] == float(identifier)]
+                if not star_data.empty:
+                    print(f"Found star by HIP number: {identifier}")
+        except ValueError:
+            pass
+
+    # If not found as line number, try other identifiers
+    if star_data.empty:
+        df['wds_norm'] = df['wds_designation'].apply(normalize_identifier)
+        df['disc_norm'] = df['discoverer_designation'].apply(normalize_identifier)
+
+        # Try WDS designation
+        star_data = df[df['wds_norm'] == identifier_normalized]
+        if not star_data.empty:
+            print(f"Found star by WDS designation: {identifier}")
+
+        # Try discoverer designation
+        if star_data.empty:
+            star_data = df[df['disc_norm'] == identifier_normalized]
+            if not star_data.empty:
+                print(f"Found star by discoverer designation: {identifier}")
+
+        # Try HIP number
+        if star_data.empty:
+            if identifier_normalized.startswith('HIP'):
+                hip_num = identifier_normalized.replace('HIP', '').strip()
+                try:
+                    star_data = df[df['hip_number'] == float(hip_num)]
+                    if not star_data.empty:
+                        print(f"Found star by HIP number: {hip_num}")
+                except ValueError:
+                    pass
+
+        # Try HD number
+        if star_data.empty:
+            if identifier_normalized.startswith('HD'):
+                hd_num = identifier_normalized.replace('HD', '').strip()
+                try:
+                    star_data = df[df['hd_number'] == float(hd_num)]
+                    if not star_data.empty:
+                        print(f"Found star by HD number: {hd_num}")
+                except ValueError:
+                    pass
+
+    if star_data.empty:
+        raise ValueError(f"Could not find star with identifier '{identifier}'")
+
+    # Use first match if multiple found
+    if len(star_data) > 1:
+        print(f"Warning: Found {len(star_data)} matches, using first one")
+
+    star = star_data.iloc[0]
+
+    # Extract orbital elements (same as original)
+    wds_designation = star['wds_designation']
+    discoverer_designation = star['discoverer_designation']
+
+    # Create Monte Carlo samples (same as original)
+    np.random.seed(42)
+    period = np.random.normal(star['period_years'], star['period_error_years'], n_samples)
+    periastron_date = np.random.normal(star['periastron_time_years'], star['time_error_years'], n_samples)
+    semimajor_axis = np.random.normal(star['semimajor_axis_arcsec'], star['axis_error_arcsec'], n_samples)
+    eccentricity = np.random.normal(star['eccentricity'], star['eccentricity_error'], n_samples)
+    inclination = np.random.normal(star['inclination'], star['inclination_error'], n_samples)
+    argument_periastron = np.random.normal(star['periastron_longitude'], star['periastron_longitude_error'], n_samples)
+    ascending_node = np.random.normal(star['ascending_node'], star['node_error'], n_samples)
+
+    # Apply constraints (same as original)
+    period = np.maximum(period, 0.0001)
+    eccentricity = np.clip(eccentricity, 0, 0.9999)
+    semimajor_axis = np.maximum(semimajor_axis, 0.000001)
+    inclination = np.clip(inclination, 0, 180)
+
+    # Use provided epoch or current time
+    if epoch is None:
+        current_epoch = bc.get_current_decimal_year()
+    else:
+        current_epoch = epoch
+
+    # Calculate current positions
+    result = bc.calculate_binary_position(
+        period=period,
+        periastron_date=periastron_date,
+        semimajor_axis=semimajor_axis,
+        eccentricity=eccentricity,
+        inclination=inclination,
+        argument_periastron=argument_periastron,
+        ascending_node=ascending_node,
+        epoch=current_epoch
+    )
+
+    separations = result['separation']
+    position_angles = result['position_angle']
+
+    # Compute orbit ensemble
+    orbit_data = bc.compute_orbit_ensemble(
+        period, periastron_date, semimajor_axis, eccentricity,
+        inclination, argument_periastron, ascending_node,
+        n_epochs=150  # Reduced from 200 for speed
+    )
+
+    # Current positions for overlay
+    current_positions = {
+        'separation': separations,
+        'position_angle': position_angles,
+        'epoch': current_epoch
+    }
+
+    # Capture the plot as SVG instead of saving to file
+    svg_content = None
+
+    # Temporarily override matplotlib's show and savefig
+    original_show = plt.show
+    original_savefig = plt.savefig
+
+    def capture_svg(*args, **kwargs):
+        nonlocal svg_content
+        # Always save as SVG for web use
+        svg_buffer = io.StringIO()
+        kwargs['format'] = 'svg'
+        kwargs['bbox_inches'] = 'tight'
+        kwargs['facecolor'] = '#0d1117'
+        kwargs['edgecolor'] = 'none'
+        original_savefig(svg_buffer, **kwargs)
+        svg_content = svg_buffer.getvalue()
+        svg_buffer.close()
+
+    def no_show():
+        pass  # Don't show plots in Streamlit
+
+    # Override functions
+    plt.show = no_show
+    plt.savefig = capture_svg
+
+    try:
+        # Call the existing plot function (this will trigger our capture)
+        plot_orbit_ensemble(orbit_data, current_positions,
+                          f"{wds_designation} Orbit Uncertainty", save_fig=True)
+
+        return svg_content
+
+    finally:
+        # Always restore original functions
+        plt.show = original_show
+        plt.savefig = original_savefig
+        plt.close('all')  # Clean up any open figures
 
 def main():
     """Main function to handle command line arguments."""
