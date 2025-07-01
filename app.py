@@ -282,7 +282,7 @@ def main():
     # About button in header
     col1, col2, col3 = st.columns([6, 1, 1])
     with col3:
-        if st.button("ℹ️ About", key="about_button"):
+        if st.button("About", key="about_button"):
             st.session_state.show_about = not st.session_state.get('show_about', False)
 
     # About dialog
