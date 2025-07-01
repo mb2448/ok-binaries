@@ -34,7 +34,7 @@ plt.style.use('dark_background')
 
 # Additional settings for crisper rendering
 plt.rcParams['figure.dpi'] = 100
-plt.rcParams['savefig.dpi'] = 600
+plt.rcParams['savefig.dpi'] = 300
 plt.rcParams['font.size'] = 12
 plt.rcParams['axes.linewidth'] = 1.5
 plt.rcParams['xtick.major.width'] = 1.5
@@ -148,7 +148,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     # Smaller figure size but higher DPI for web display
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.set_aspect('equal')
-    
+
     # Increase font sizes for better readability
     ax.tick_params(axis='both', which='major', labelsize=12)
 
@@ -334,7 +334,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14, fontweight='medium')
     ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14, fontweight='medium')
     ax.set_title(title, fontsize=16, fontweight='bold')
-    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329', 
+    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329',
              edgecolor='#3d4248', fontsize=12, framealpha=0.9)
     ax.grid(True, alpha=0.3, linewidth=0.8, antialiased=True)
     ax.invert_xaxis()
@@ -395,7 +395,7 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
 
     if save_fig:
         # Save as SVG for perfect scaling
-        plt.savefig(f'{title.replace(" ", "_").lower()}.svg', format='svg', bbox_inches='tight', 
+        plt.savefig(f'{title.replace(" ", "_").lower()}.svg', format='svg', bbox_inches='tight',
                    facecolor='#0d1117', edgecolor='none', pad_inches=0.1)
         print(f"Figure saved as SVG")
 
@@ -627,7 +627,7 @@ def main():
         return
 
     csv_file = sys.argv[1]
-    
+
     # Find where the identifier ends and optional arguments begin
     identifier_parts = []
     epoch = None
@@ -639,7 +639,7 @@ def main():
         else:
             identifier_parts.append(sys.argv[i])
         i += 1
-    
+
     identifier = ' '.join(identifier_parts)
 
     try:
