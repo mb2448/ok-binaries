@@ -334,8 +334,8 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
     ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14, fontweight='medium')
     ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14, fontweight='medium')
     ax.set_title(title, fontsize=16, fontweight='bold')
-    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329',
-             edgecolor='#3d4248', fontsize=12, framealpha=0.9)
+    #ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329',
+    #         edgecolor='#3d4248', fontsize=12, framealpha=0.9)
     ax.grid(True, alpha=0.3, linewidth=0.8, antialiased=True)
     ax.invert_xaxis()
 
