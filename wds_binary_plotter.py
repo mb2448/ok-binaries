@@ -596,7 +596,7 @@ def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=400
+        n_epochs=200
     )
 
     # Plot the ensemble with current position overlay
@@ -719,7 +719,7 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=400
+        n_epochs=200
     )
 
     # Current positions for overlay
