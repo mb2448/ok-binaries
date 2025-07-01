@@ -596,7 +596,7 @@ def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=200
+        n_epochs=400
     )
 
     # Plot the ensemble with current position overlay
@@ -610,22 +610,20 @@ def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
 
 def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=None):
     """
-    Version of plot_wds_binary that returns SVG content directly instead of saving files.
-    Used by Streamlit to avoid subprocess overhead.
+    Fixed version that reliably captures SVG content.
     """
     import os
     import io
 
-    # Auto-detect if running on Streamlit Cloud and use fewer samples
+    # Auto-detect if running on Streamlit Cloud
     is_cloud = os.getenv('STREAMLIT_SHARING_MODE') is not None
     if n_samples is None:
-        n_samples = 50 if is_cloud else 100  # Reduced default for web use
+        n_samples = 50 if is_cloud else 100
 
-    # Load the spreadsheet (same as original)
+    # Load and find star (same as before)
     print(f"Loading data from {csv_file}...")
     df = pd.read_csv(csv_file)
 
-    # Find the star (copy the exact logic from plot_wds_binary)
     def normalize_identifier(s):
         if pd.isna(s):
             return ""
@@ -634,80 +632,53 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
     star_data = pd.DataFrame()
     identifier_normalized = normalize_identifier(identifier)
 
-    # Check if identifier is a line number
+    # Find star logic (same as before)
     if identifier.lower().startswith('line:'):
         try:
             line_num = int(identifier[5:])
             star_data = df[df['line_number'] == line_num]
-            if not star_data.empty:
-                print(f"Found star by line number: {line_num}")
         except ValueError:
             pass
     elif identifier.isdigit():
         try:
             line_num = int(identifier)
             star_data = df[df['line_number'] == line_num]
-            if not star_data.empty:
-                print(f"Found star by line number: {line_num}")
-            else:
+            if star_data.empty:
                 star_data = df[df['hip_number'] == float(identifier)]
-                if not star_data.empty:
-                    print(f"Found star by HIP number: {identifier}")
         except ValueError:
             pass
 
-    # If not found as line number, try other identifiers
     if star_data.empty:
         df['wds_norm'] = df['wds_designation'].apply(normalize_identifier)
         df['disc_norm'] = df['discoverer_designation'].apply(normalize_identifier)
 
-        # Try WDS designation
         star_data = df[df['wds_norm'] == identifier_normalized]
-        if not star_data.empty:
-            print(f"Found star by WDS designation: {identifier}")
-
-        # Try discoverer designation
         if star_data.empty:
             star_data = df[df['disc_norm'] == identifier_normalized]
-            if not star_data.empty:
-                print(f"Found star by discoverer designation: {identifier}")
 
-        # Try HIP number
-        if star_data.empty:
-            if identifier_normalized.startswith('HIP'):
-                hip_num = identifier_normalized.replace('HIP', '').strip()
-                try:
-                    star_data = df[df['hip_number'] == float(hip_num)]
-                    if not star_data.empty:
-                        print(f"Found star by HIP number: {hip_num}")
-                except ValueError:
-                    pass
+        if star_data.empty and identifier_normalized.startswith('HIP'):
+            hip_num = identifier_normalized.replace('HIP', '').strip()
+            try:
+                star_data = df[df['hip_number'] == float(hip_num)]
+            except ValueError:
+                pass
 
-        # Try HD number
-        if star_data.empty:
-            if identifier_normalized.startswith('HD'):
-                hd_num = identifier_normalized.replace('HD', '').strip()
-                try:
-                    star_data = df[df['hd_number'] == float(hd_num)]
-                    if not star_data.empty:
-                        print(f"Found star by HD number: {hd_num}")
-                except ValueError:
-                    pass
+        if star_data.empty and identifier_normalized.startswith('HD'):
+            hd_num = identifier_normalized.replace('HD', '').strip()
+            try:
+                star_data = df[df['hd_number'] == float(hd_num)]
+            except ValueError:
+                pass
 
     if star_data.empty:
         raise ValueError(f"Could not find star with identifier '{identifier}'")
 
-    # Use first match if multiple found
-    if len(star_data) > 1:
-        print(f"Warning: Found {len(star_data)} matches, using first one")
-
     star = star_data.iloc[0]
 
-    # Extract orbital elements (same as original)
+    # Extract orbital elements and create samples (same as before)
     wds_designation = star['wds_designation']
     discoverer_designation = star['discoverer_designation']
 
-    # Create Monte Carlo samples (same as original)
     np.random.seed(42)
     period = np.random.normal(star['period_years'], star['period_error_years'], n_samples)
     periastron_date = np.random.normal(star['periastron_time_years'], star['time_error_years'], n_samples)
@@ -717,7 +688,7 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
     argument_periastron = np.random.normal(star['periastron_longitude'], star['periastron_longitude_error'], n_samples)
     ascending_node = np.random.normal(star['ascending_node'], star['node_error'], n_samples)
 
-    # Apply constraints (same as original)
+    # Apply constraints
     period = np.maximum(period, 0.0001)
     eccentricity = np.clip(eccentricity, 0, 0.9999)
     semimajor_axis = np.maximum(semimajor_axis, 0.000001)
@@ -748,7 +719,7 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=150  # Reduced from 200 for speed
+        n_epochs=400
     )
 
     # Current positions for overlay
@@ -758,44 +729,213 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
         'epoch': current_epoch
     }
 
-    # Capture the plot as SVG instead of saving to file
-    svg_content = None
+    # FIXED: Generate plot directly instead of trying to capture it
+    try:
+        # Close any existing figures first
+        plt.close('all')
 
-    # Temporarily override matplotlib's show and savefig
-    original_show = plt.show
-    original_savefig = plt.savefig
+        # Create the plot directly by calling plot_orbit_ensemble
+        # but modify it to return the figure instead of showing it
+        fig = create_orbit_plot_figure(orbit_data, current_positions,
+                                     f"{wds_designation} Orbit Uncertainty")
 
-    def capture_svg(*args, **kwargs):
-        nonlocal svg_content
-        # Always save as SVG for web use
+        # Convert figure to SVG
         svg_buffer = io.StringIO()
-        kwargs['format'] = 'svg'
-        kwargs['bbox_inches'] = 'tight'
-        kwargs['facecolor'] = '#0d1117'
-        kwargs['edgecolor'] = 'none'
-        original_savefig(svg_buffer, **kwargs)
+        fig.savefig(svg_buffer, format='svg', bbox_inches='tight',
+                   facecolor='#0d1117', edgecolor='none', pad_inches=0.1)
         svg_content = svg_buffer.getvalue()
         svg_buffer.close()
 
-    def no_show():
-        pass  # Don't show plots in Streamlit
+        # Clean up
+        plt.close(fig)
 
-    # Override functions
-    plt.show = no_show
-    plt.savefig = capture_svg
-
-    try:
-        # Call the existing plot function (this will trigger our capture)
-        plot_orbit_ensemble(orbit_data, current_positions,
-                          f"{wds_designation} Orbit Uncertainty", save_fig=True)
-
+        print(f"Successfully generated SVG content ({len(svg_content)} characters)")
         return svg_content
 
-    finally:
-        # Always restore original functions
-        plt.show = original_show
-        plt.savefig = original_savefig
-        plt.close('all')  # Clean up any open figures
+    except Exception as e:
+        print(f"Error generating plot: {e}")
+        plt.close('all')  # Clean up any partial figures
+        raise
+
+def create_orbit_plot_figure(orbit_data, current_positions=None, title="Binary Star Orbit Ensemble"):
+    """
+    Modified version of plot_orbit_ensemble that returns a figure instead of showing it.
+    Includes the inset plot showing separation vs position angle distribution.
+    """
+    separations = orbit_data['separations']
+    position_angles = orbit_data['position_angles']
+    epochs = orbit_data['epochs']
+
+    n_samples, n_epochs = separations.shape
+
+    # Create figure - smaller size for web use
+    fig, ax = plt.subplots(figsize=(10, 8))  # Keep larger size to accommodate inset
+    ax.set_aspect('equal')
+
+    # Calculate plot limits
+    max_sep = np.nanmax(separations)
+    if current_positions is not None:
+        max_current = np.max(current_positions['separation'])
+        max_sep = max(max_sep, max_current)
+
+    max_range = max_sep * 1.1
+    ax.set_xlim(-max_range, max_range)
+    ax.set_ylim(-max_range, max_range)
+
+    # Plot orbits with reduced complexity for speed
+    alpha = min(0.3, 100 / n_samples)
+
+    # Sample fewer orbits for display to improve performance
+    display_samples = min(n_samples, 100)  # Maximum 100 orbits shown
+    sample_indices = np.linspace(0, n_samples-1, display_samples, dtype=int)
+
+    for i in sample_indices:
+        pa = position_angles[i, :].copy()
+        pa_unwrapped = np.unwrap(np.radians(pa)) * 180 / np.pi
+
+        theta_rad = np.radians(90 - pa_unwrapped)
+        x = separations[i, :] * np.cos(theta_rad)
+        y = separations[i, :] * np.sin(theta_rad)
+
+        valid_mask = np.isfinite(x) & np.isfinite(y)
+        if np.sum(valid_mask) > 2:
+            ax.plot(x[valid_mask], y[valid_mask], 'c-', alpha=alpha, linewidth=1.0)
+
+    # Overlay current position if provided
+    if current_positions is not None:
+        current_sep = current_positions['separation']
+        current_pa = current_positions['position_angle']
+        current_epoch = current_positions['epoch']
+
+        # Convert to Cartesian
+        theta_current_rad = np.radians(90 - current_pa)
+        x_current = current_sep * np.cos(theta_current_rad)
+        y_current = current_sep * np.sin(theta_current_rad)
+
+        # Plot current position cloud
+        ax.scatter(x_current, y_current, alpha=0.5, s=15, c='orange',
+                  label=f'Current position ({current_epoch:.3f})', zorder=5)
+
+        # Calculate statistics for both display and errors
+        sep_median = np.median(current_sep)
+        sep_std = np.std(current_sep)
+
+        # Use circular statistics for position angle
+        pa_rad = np.radians(current_pa)
+        sin_mean = np.mean(np.sin(pa_rad))
+        cos_mean = np.mean(np.cos(pa_rad))
+        pa_median = np.degrees(np.arctan2(sin_mean, cos_mean))
+        if pa_median < 0:
+            pa_median += 360
+
+        # Calculate circular standard deviation
+        R = np.sqrt(sin_mean**2 + cos_mean**2)
+        if R >= 1.0:
+            pa_std = 0.0
+        else:
+            pa_std = np.degrees(np.sqrt(-2 * np.log(R)))
+
+        # Format errors properly
+        def format_error_value(value, threshold=0.001):
+            if value < threshold:
+                return f"{value:.2e}"
+            elif value < 0.01:
+                return f"{value:.4f}"
+            elif value < 0.1:
+                return f"{value:.3f}"
+            elif value < 1:
+                return f"{value:.2f}"
+            else:
+                return f"{value:.1f}"
+
+        # Add stats text with proper error formatting
+        year = int(current_epoch)
+        year_fraction = current_epoch - year
+        days_in_year = 366 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 365
+        day_of_year = int(year_fraction * days_in_year) + 1
+
+        from datetime import datetime, timedelta
+        date = datetime(year, 1, 1) + timedelta(days=day_of_year - 1)
+        date_str = date.strftime("%Y %B %d")
+
+        calc_time = datetime.now().strftime("%H:%M:%S")
+
+        stats_text = (f'Current Position\n({date_str}):\n'
+                     f'Sep: {sep_median:.3f} ± {format_error_value(sep_std)}" \n'
+                     f'PA: {pa_median:.2f} ± {format_error_value(pa_std)}°\n\n'
+                     f'Calculated: {calc_time}')
+
+        ax.text(1.02, 0.02, stats_text, transform=ax.transAxes,
+                fontsize=11, verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.9))
+
+        # CREATE INSET PLOT - This was missing!
+        ax_inset = fig.add_axes([0.72, 0.4, 0.25, 0.25], facecolor='#161b22')
+
+        # Handle wraparound: shift data to center around 180° to avoid edge effects
+        pa_shifted = (current_pa + 180) % 360
+        pa_median_shifted = (pa_median + 180) % 360
+
+        # Plot points in separation/PA space (shifted)
+        ax_inset.scatter(pa_shifted, current_sep, alpha=0.6, s=20, c='orange', edgecolors='none')
+
+        # Add median point
+        ax_inset.plot(pa_median_shifted, sep_median, 'wo', markersize=8, label='Median', markeredgecolor='none')
+
+        # Set inset labels and styling
+        ax_inset.set_xlabel('Position Angle (°)', fontsize=10)
+        ax_inset.set_ylabel('Separation (arcsec)', fontsize=10)
+        ax_inset.set_title('Current Position Distribution', fontsize=11)
+        ax_inset.tick_params(axis='both', which='major', labelsize=9)
+        ax_inset.grid(True, alpha=0.3, linewidth=0.5)
+
+        # Calculate x-axis limits to zoom in on the data
+        pa_range = pa_shifted.max() - pa_shifted.min()
+        pa_padding = max(pa_range * 0.2, 10)
+
+        # Set x limits
+        x_min = max(0, pa_shifted.min() - pa_padding)
+        x_max = min(360, pa_shifted.max() + pa_padding)
+        ax_inset.set_xlim(x_min, x_max)
+
+        # Create custom tick labels that map back to original PA values
+        n_ticks = 5
+        xticks = np.linspace(x_min, x_max, n_ticks)
+        xtick_labels = []
+        for tick in xticks:
+            original_pa = (tick - 180) % 360
+            xtick_labels.append(f'{original_pa:.0f}°')
+
+        ax_inset.set_xticks(xticks)
+        ax_inset.set_xticklabels(xtick_labels, fontsize=9)
+
+        # Set reasonable y-axis limits with some padding
+        sep_range = current_sep.max() - current_sep.min()
+        sep_padding = sep_range * 0.2 if sep_range > 0 else 0.001
+        ax_inset.set_ylim(current_sep.min() - sep_padding, current_sep.max() + sep_padding)
+
+        # Add border to inset
+        for spine in ax_inset.spines.values():
+            spine.set_edgecolor('#3d4248')
+            spine.set_linewidth(1)
+
+    # Primary star
+    ax.plot(0, 0, 'o', color='gold', markersize=14, label='Primary', markeredgecolor='none')
+
+    # Labels and styling
+    ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14, fontweight='medium')
+    ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14, fontweight='medium')
+    ax.set_title(title, fontsize=16, fontweight='bold')
+    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329',
+             edgecolor='#3d4248', fontsize=12, framealpha=0.9)
+    ax.grid(True, alpha=0.3, linewidth=0.8)
+    ax.invert_xaxis()
+
+    # Adjust layout to make room for text boxes and inset on the right
+    plt.subplots_adjust(left=0.1, right=0.62, top=0.95, bottom=0.05)
+
+    # Return the figure instead of showing it
+    return fig
 
 def main():
     """Main function to handle command line arguments."""
