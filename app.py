@@ -207,6 +207,72 @@ def display_orbital_elements(star_data):
 def plot_binary_star(row, csv_path, plot_datetime=None):
     """Generate orbit plot by calling wds_binary_plotter.py script"""
 
+    # Check if we can import and use the plotter directly
+    try:
+        # If plotter is already imported, use it directly
+        if 'wds_binary_plotter' in sys.modules:
+            import wds_binary_plotter
+            from io import StringIO
+
+            # Create a fake command line argument structure
+            class Args:
+                def __init__(self, csv_file, identifier, epoch=None):
+                    self.csv_file = csv_file
+                    self.identifier = str(identifier)
+                    self.epoch = epoch
+
+            # Convert datetime to decimal year if provided
+            epoch = None
+            if plot_datetime:
+                year = plot_datetime.year
+                year_start = datetime(year, 1, 1)
+                year_end = datetime(year + 1, 1, 1)
+                year_elapsed = (plot_datetime - year_start).total_seconds()
+                year_duration = (year_end - year_start).total_seconds()
+                epoch = year + (year_elapsed / year_duration)
+
+            # Temporarily redirect stdout to capture any print statements
+            old_stdout = sys.stdout
+            sys.stdout = StringIO()
+
+            try:
+                # Call the plotter directly with the star data
+                wds_binary_plotter.plot_wds_binary(
+                    csv_path,
+                    str(int(row['line_number'])),
+                    epoch=epoch
+                )
+
+                # Look for generated files
+                svg_files = glob.glob('*.svg')
+                if svg_files:
+                    latest_svg = max(svg_files, key=os.path.getctime)
+                    with open(latest_svg, 'r', encoding='utf-8') as f:
+                        svg_content = f.read()
+                    os.remove(latest_svg)
+                    return ('svg', svg_content)
+
+                png_files = glob.glob('*.png')
+                if png_files:
+                    latest_png = max(png_files, key=os.path.getctime)
+                    image = Image.open(latest_png)
+                    os.remove(latest_png)
+                    return ('png', image)
+
+            finally:
+                sys.stdout = old_stdout
+
+        else:
+            # First time - import it (will be slow but then cached)
+            import wds_binary_plotter
+            # Now call ourselves recursively - will use the fast path
+            return plot_binary_star(row, csv_path, plot_datetime)
+
+    except:
+        # Fall back to subprocess method if direct call fails
+        pass
+
+    # Original subprocess code continues here...
     # Use line number as the identifier since it's guaranteed to be unique
     identifier = str(int(row['line_number']))
 
@@ -294,16 +360,15 @@ def main():
                 st.markdown("### About the OK Binary Star Catalog")
                 st.markdown("""
                 **The OK Binary Star Catalog** provides real-time orbital calculations
-                for binary star systems from the Washington Double Star (WDS) [Sixth Catalog
-                of Orbits of Visual Binary Stars](https://www.astro.gsu.edu/wds/orb6.html),
-                maintained by the US Naval Observatory.  The stars included in this app are ones that have errors reported for all
-                their orbital elements.
+                for binary star systems from the Washington Double Star (WDS) Catalog's
+                Sixth Orbit Catalog.
 
-                The purpose of this catalog is to provide decent calibration binaries for
-                plate scale and orientation (eg, North) for astronomical instruments. The
-                elements in the table are updated once per day.  Plots can be made of up
-                to date positions, or for any date between 1500-2500.
-
+                #### Features:
+                - **Daily updated positions** - Automated calculations run every 24 hours
+                - **Interactive orbit plotting** - Visualize orbital paths with uncertainty
+                - **Custom date/time calculations** - See positions for any date from 1800-2200
+                - **Monte Carlo uncertainty analysis** - 200 samples show positional uncertainty
+                - **Dark mode visualization** - Easy on the eyes for nighttime observers
 
                 #### How to use:
                 1. **Browse or search** the table (search includes WDS, HD, HIP numbers and notes)
@@ -312,16 +377,18 @@ def main():
                 4. **Set a custom date/time** to see past or future positions
                 5. **Use filters** to find stars by position, magnitude, or orbital properties
 
-                ***Suggested usage:*** filter by RA/Dec needs and then sort by
-                position angle error (σ_θ) to find the best calibration binaries.
+                #### Data Source:
+                The orbital elements come from the *WDS Sixth Catalog of Orbits of Visual Binary Stars*,
+                maintained by the US Naval Observatory. Positions are calculated daily using numerical
+                integration of the orbital elements with full error propagation.
 
                 #### Technical Details:
+                - Calculations use Thiele-Innes orbital elements
                 - Position angles follow the IAU convention (North = 0°, East = 90°)
                 - All times are in UTC
-                - Uncertainties are calculated by sampling from the errors in the orbital elements
-                  (Gaussian assumed) and computing a full Keplerian orbit, then evaluating each orbit at the specified date.
+                - Uncertainties are propagated using Monte Carlo sampling
 
-                Please direct bug reports, feature requests, etc [here](https://github.com/mb2448/ok-binaries/issues)
+                Created by [Your Name/Organization]
                 """)
 
                 if st.button("Close", key="close_about"):
@@ -758,7 +825,7 @@ def main():
                     #if plot_type:
                     #    if st.button("Hide Plot"):
                     #        st.session_state.show_plot = False
-                    #        st.rerun()
+                    #        st.rerun(scope="fragment")
                 except Exception as e:
                     st.error(f"Error generating plot: {str(e)}")
                     #if st.button("Dismiss Error"):
