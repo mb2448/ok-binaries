@@ -763,12 +763,6 @@ def main():
             st.markdown("---")
             st.subheader("Orbit Plot")
 
-            # Current position
-            pos_col1, pos_col2 = st.columns(2)
-            with pos_col1:
-                st.write(f"**Current Separation:** {selected_star['separation_current']:.3f} ± {selected_star['separation_error']:.3f} arcsec")
-            with pos_col2:
-                st.write(f"**Current Position Angle:** {selected_star['position_angle_current']:.1f} ± {selected_star['position_angle_error']:.1f}°")
 
             # Generate plot
             with st.spinner("Generating orbit plot..."):

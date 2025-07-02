@@ -18,6 +18,7 @@ MODIFICATIONS:
 3. When line number is provided, uses that specific row directly
 4. Added inset plot showing current position distribution with 1, 2, 3 sigma contours
 5. Added dark mode theme for better website integration
+6. Fixed text positioning and formatting for both command line and Streamlit versions
 """
 
 import sys
@@ -259,21 +260,20 @@ def plot_orbit_ensemble(orbit_data, current_positions=None, title="Binary Star O
             sep_error_str = format_error_value(sep_std)
             pa_error_str = format_error_value(pa_std)
 
-        stats_text = (f'Current Position\n({date_str}):\n'
-                     f'Sep: {sep_median:.3f} ± {sep_error_str}" \n'
-                     f'PA: {pa_median:.2f} ± {pa_error_str}°\n\n'
-                     f'Calculated: {calc_time}')
+        # Clean, well-formatted stats text
+        stats_text = (f'Calculated position:\n'
+                     f'{date_str}, {calc_time}\n'
+                     f'Sep: {sep_median:.3f} ± {sep_error_str}″\n'
+                     f'PA: {pa_median:.2f} ± {pa_error_str}°')
 
-        # Position text box in bottom right outside the plot
-        # Using dark background for the text box
-        ax.text(1.02, 0.02, stats_text, transform=ax.transAxes,
-                fontsize=11, verticalalignment='bottom', horizontalalignment='left',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.9))
+        # Position text box outside the plot, top right
+        ax.text(1.12, 0.98, stats_text, transform=ax.transAxes,
+                fontsize=16, verticalalignment='top', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.6', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.95))
 
         # Create inset axes for separation vs PA plot
-        # Position it between the legend and the stats text box
-        # Moved further right to avoid overlap with main plot
-        ax_inset = fig.add_axes([0.72, 0.4, 0.25, 0.25], facecolor='#161b22')
+        # Position it under the legend text box, with spacing to avoid title overlap
+        ax_inset = fig.add_axes([0.72, 0.35, 0.25, 0.25], facecolor='#161b22')
 
         # Handle wraparound: shift data to center around 180° to avoid edge effects
         # This prevents artificial gaps at 0°/360°
@@ -596,7 +596,7 @@ def plot_wds_binary(csv_file, identifier, n_samples=200, epoch=None):
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=200
+        n_epochs=400
     )
 
     # Plot the ensemble with current position overlay
@@ -719,7 +719,7 @@ def plot_wds_binary_for_streamlit(csv_file, identifier, epoch=None, n_samples=No
     orbit_data = bc.compute_orbit_ensemble(
         period, periastron_date, semimajor_axis, eccentricity,
         inclination, argument_periastron, ascending_node,
-        n_epochs=200
+        n_epochs=400
     )
 
     # Current positions for overlay
@@ -768,8 +768,8 @@ def create_orbit_plot_figure(orbit_data, current_positions=None, title="Binary S
 
     n_samples, n_epochs = separations.shape
 
-    # Create figure - smaller size for web use
-    fig, ax = plt.subplots(figsize=(10, 8))  # Keep larger size to accommodate inset
+    # Create figure - keep size to accommodate inset
+    fig, ax = plt.subplots(figsize=(10, 8))
     ax.set_aspect('equal')
 
     # Calculate plot limits
@@ -848,7 +848,7 @@ def create_orbit_plot_figure(orbit_data, current_positions=None, title="Binary S
             else:
                 return f"{value:.1f}"
 
-        # Add stats text with proper error formatting
+        # Add cleaned up stats text with better formatting
         year = int(current_epoch)
         year_fraction = current_epoch - year
         days_in_year = 366 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 365
@@ -860,17 +860,20 @@ def create_orbit_plot_figure(orbit_data, current_positions=None, title="Binary S
 
         calc_time = datetime.now().strftime("%H:%M:%S")
 
-        stats_text = (f'Current Position\n({date_str}):\n'
-                     f'Sep: {sep_median:.3f} ± {format_error_value(sep_std)}" \n'
-                     f'PA: {pa_median:.2f} ± {format_error_value(pa_std)}°\n\n'
-                     f'Calculated: {calc_time}')
+        # Clean, well-formatted stats text
+        stats_text = (f'Calculated position:\n'
+                     f'{date_str}, {calc_time}\n'
+                     f'Sep: {sep_median:.3f} ± {format_error_value(sep_std)}″\n'
+                     f'PA: {pa_median:.2f} ± {format_error_value(pa_std)}°')
 
-        ax.text(1.02, 0.02, stats_text, transform=ax.transAxes,
-                fontsize=11, verticalalignment='bottom', horizontalalignment='left',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.9))
+        # Position text box outside the plot, top right
+        ax.text(1.12, 0.98, stats_text, transform=ax.transAxes,
+                fontsize=16, verticalalignment='top', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.6', facecolor='#1e2329', edgecolor='#3d4248', alpha=0.95))
 
-        # CREATE INSET PLOT - This was missing!
-        ax_inset = fig.add_axes([0.72, 0.4, 0.25, 0.25], facecolor='#161b22')
+        # CREATE INSET PLOT
+        # Position it under the legend text box, with spacing to avoid title overlap
+        ax_inset = fig.add_axes([0.72, 0.35, 0.25, 0.25], facecolor='#161b22')
 
         # Handle wraparound: shift data to center around 180° to avoid edge effects
         pa_shifted = (current_pa + 180) % 360
@@ -926,8 +929,6 @@ def create_orbit_plot_figure(orbit_data, current_positions=None, title="Binary S
     ax.set_xlabel('East ← Δα cos(δ) (arcsec) → West', fontsize=14, fontweight='medium')
     ax.set_ylabel('South ← Δδ (arcsec) → North', fontsize=14, fontweight='medium')
     ax.set_title(title, fontsize=16, fontweight='bold')
-    ax.legend(bbox_to_anchor=(1.02, 0.98), loc='upper left', facecolor='#1e2329',
-             edgecolor='#3d4248', fontsize=12, framealpha=0.9)
     ax.grid(True, alpha=0.3, linewidth=0.8)
     ax.invert_xaxis()
 
