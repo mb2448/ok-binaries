@@ -325,31 +325,33 @@ def main():
             st.markdown("---")
             col1, col2, col3 = st.columns([1, 3, 1])
             with col2:
-                st.markdown("### About the OK Binary Star Catalog")
-                st.markdown("""
+               st.markdown("### About the OK Binary Star Catalog")
+               st.markdown("""
                 **The OK Binary Star Catalog** provides real-time orbital calculations
                 for binary star systems from the Washington Double Star (WDS) Catalog's
-                Sixth Orbit Catalog, restricted to systems that have errors reported for all Keplerian elements.  The purpose of this catalog is to provide a convenient list of "good enough" calibration binaries.
+                Sixth Orbit Catalog, restricted to systems that have errors reported for all
+                Keplerian elements. The purpose of this catalog is to provide a convenient
+                list of "good enough" calibration binaries.
 
 
-                #### How to use:
+                ### How to use:
                 1. **Browse or search** the table (search includes WDS, HD, HIP numbers and notes)
                 2. **Click a star** to see its orbital elements
                 3. **Generate a plot** to visualize the orbit
                 4. **Set a custom date/time** to see past or future positions
                 5. **Use filters** to find stars by position, magnitude, etc
 
-**For "OK" calibration binaries, suggest filtering by σ_θ"**
+                ##### For "OK" calibration binaries, suggest filtering by σ_θ
 
-                #### Technical Details:
+                ### Technical Details:
                 - Position angles follow the IAU convention (North = 0°, East = 90°)
                 - All times are in UTC
                 - Uncertainties are propagated using Monte Carlo sampling assuming Gaussian errors
 
-                **Direct bug reports, feature requests, etc to https://github.com/mb2448/ok-binaries/issues
+                Direct bug reports, feature requests, etc to https://github.com/mb2448/ok-binaries/issues
                 """)
 
-                if st.button("Close", key="close_about"):
+               if st.button("Close", key="close_about"):
                     st.session_state.show_about = False
                     st.rerun()
             st.markdown("---")
