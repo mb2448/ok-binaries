@@ -329,34 +329,24 @@ def main():
                 st.markdown("""
                 **The OK Binary Star Catalog** provides real-time orbital calculations
                 for binary star systems from the Washington Double Star (WDS) Catalog's
-                Sixth Orbit Catalog.
+                Sixth Orbit Catalog, restricted to systems that have errors reported for all Keplerian elements.  The purpose of this catalog is to provide a convenient list of "good enough" calibration binaries.
 
-                #### Features:
-                - **Daily updated positions** - Automated calculations run every 24 hours
-                - **Interactive orbit plotting** - Visualize orbital paths with uncertainty
-                - **Custom date/time calculations** - See positions for any date from 1800-2200
-                - **Monte Carlo uncertainty analysis** - 200 samples show positional uncertainty
-                - **Dark mode visualization** - Easy on the eyes for nighttime observers
 
                 #### How to use:
                 1. **Browse or search** the table (search includes WDS, HD, HIP numbers and notes)
                 2. **Click a star** to see its orbital elements
                 3. **Generate a plot** to visualize the orbit
                 4. **Set a custom date/time** to see past or future positions
-                5. **Use filters** to find stars by position, magnitude, or orbital properties
+                5. **Use filters** to find stars by position, magnitude, etc
 
-                #### Data Source:
-                The orbital elements come from the *WDS Sixth Catalog of Orbits of Visual Binary Stars*,
-                maintained by the US Naval Observatory. Positions are calculated daily using numerical
-                integration of the orbital elements with full error propagation.
+**For "OK" calibration binaries, suggest filtering by σ_θ"**
 
                 #### Technical Details:
-                - Calculations use Thiele-Innes orbital elements
                 - Position angles follow the IAU convention (North = 0°, East = 90°)
                 - All times are in UTC
-                - Uncertainties are propagated using Monte Carlo sampling
+                - Uncertainties are propagated using Monte Carlo sampling assuming Gaussian errors
 
-                Created by [Your Name/Organization]
+                **Direct bug reports, feature requests, etc to https://github.com/mb2448/ok-binaries/issues
                 """)
 
                 if st.button("Close", key="close_about"):
