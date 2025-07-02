@@ -737,18 +737,17 @@ def main():
         details_container = st.container(height=520)  # Match table height
         with details_container:
             if selected_star is not None:
-                # Display star info with larger font
-                st.markdown(f"### **{selected_star['wds_designation']}** - {selected_star['discoverer_designation']}")
+                # Display star info with consistent font sizing
+                st.markdown(f"### WDS {selected_star['wds_designation']} - {selected_star['discoverer_designation']}")
 
-                # Additional identifiers
+                # Additional identifiers with consistent formatting
                 identifiers = []
                 if pd.notna(selected_star.get('hip_number')):
                     identifiers.append(f"HIP {int(selected_star['hip_number'])}")
                 if pd.notna(selected_star.get('hd_number')):
                     identifiers.append(f"HD {int(selected_star['hd_number'])}")
                 if identifiers:
-                    st.write(" • ".join(identifiers))
-
+                   st.markdown(f"### {' • '.join(identifiers)}")
                 # Display orbital elements
                 display_orbital_elements(selected_star)
             else:
