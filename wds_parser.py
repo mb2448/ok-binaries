@@ -599,11 +599,17 @@ def compute_wds_positions(filename='./orb6/orb6orbits.txt', n_samples=2000, debu
 
             # Circular standard deviation
             R = np.sqrt(sin_mean**2 + cos_mean**2)  # Mean resultant length
-            if R > 0.99999:  # Avoid numerical issues
-                pa_error = 0.0
-            else:
-                # Circular standard deviation in degrees
+
+            # Don't artificially set to zero - calculate the actual error
+            # even for very small values
+            if R >= 1.0:  # Protect against numerical issues at exactly 1
+                R = 0.999999999  # Use a value very close to 1
+
+            # Circular standard deviation in degrees
+            if R > 0:
                 pa_error = np.degrees(np.sqrt(-2 * np.log(R)))
+            else:
+                pa_error = 180.0  # Maximum possible error when R = 0
 
             df.loc[idx, 'position_angle_current'] = pa_mean
             df.loc[idx, 'position_angle_error'] = pa_error
