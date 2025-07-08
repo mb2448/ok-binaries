@@ -580,16 +580,36 @@ def main():
 
     # Apply search
     if search_term:
-        search_upper = search_term.upper()
-        mask = (
-            filtered_df['wds_designation'].astype(str).str.contains(search_upper, na=False) |
-            filtered_df['discoverer_designation'].astype(str).str.contains(search_upper, na=False) |
-            filtered_df['hip_number'].astype(str).str.contains(search_term, na=False) |
-            filtered_df['hd_number'].astype(str).str.contains(search_term, na=False) |
-            filtered_df['notes'].astype(str).str.contains(search_term, case=False, na=False)
-        )
-        filtered_df = filtered_df[mask]
+        # Clean up common prefixes and variations
+        search_cleaned = search_term.strip()
 
+        # Remove common prefixes that users might type
+        prefixes_to_remove = ['WDS', 'HD', 'HIP', 'HR', 'SAO']
+        for prefix in prefixes_to_remove:
+            if search_cleaned.upper().startswith(prefix + ' '):
+                search_cleaned = search_cleaned[len(prefix):].strip()
+                break
+
+        search_upper = search_cleaned.upper()
+
+        # Create mask for searching
+        mask = (
+            filtered_df['wds_designation'].astype(str).str.contains(search_upper, na=False, regex=False) |
+            filtered_df['discoverer_designation'].astype(str).str.contains(search_upper, na=False, regex=False) |
+            filtered_df['hip_number'].astype(str).str.contains(search_cleaned, na=False, regex=False) |
+            filtered_df['hd_number'].astype(str).str.contains(search_cleaned, na=False, regex=False) |
+            filtered_df['notes'].astype(str).str.contains(search_cleaned, case=False, na=False, regex=False)
+        )
+
+        # Also check if they typed the full designation with prefix
+        if search_term.upper().startswith('HD '):
+            hd_num = search_cleaned
+            mask = mask | (filtered_df['hd_number'].astype(str) == hd_num)
+        elif search_term.upper().startswith('HIP '):
+            hip_num = search_cleaned
+            mask = mask | (filtered_df['hip_number'].astype(str) == hip_num)
+
+        filtered_df = filtered_df[mask]
     # Display summary
     st.info(f"Showing {len(filtered_df)} of {len(df)} binary stars")
 
