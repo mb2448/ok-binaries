@@ -308,7 +308,7 @@ class WDSParser:
         result['v2_mag_flag'] = self._clean_field(line[78:79])
 
         # Column 9: Period - T82,F11.6,A1 (positions 82-93)
-        result['period_value'] = self._parse_numeric_field(line[81:92])
+        result['period_value'] = self._parse_numeric_field(line[80:92])
         result['period_unit_code'] = self._clean_field(line[92:93]) or ''
 
         # Column 10: Period error - T95,F10.6 (positions 95-104)
