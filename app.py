@@ -312,14 +312,14 @@ def plot_binary_star_subprocess(row, csv_path, plot_datetime=None):
 # Main app
 def main():
     st.title("🌟🌟 😐 OK Binary Star Catalog")
+    st.markdown("<h3 style='text-align: left; color: gray;'>A tool for finding decent binary stars for calibration purposes</h3>", unsafe_allow_html=True)
 
     # About button in header
     col1, col2, col3 = st.columns([6, 1, 1])
     with col3:
         if st.button("About", key="about_button"):
             st.session_state.show_about = not st.session_state.get('show_about', False)
-
-    # About dialog
+        # About dialog
     if st.session_state.get('show_about', False):
         with st.container():
             st.markdown("---")
@@ -333,23 +333,38 @@ def main():
                 Keplerian elements. The purpose of this catalog is to provide a convenient
                 list of "good enough" calibration binaries.
 
-
                 ### How to use:
+                ##### TL;DR: for the best "OK" calibration binaries, suggest sorting by σ_θ
                 1. **Browse or search** the table (search includes WDS, HD, HIP numbers and notes)
                 2. **Click a star** to see its orbital elements
                 3. **Generate a plot** to visualize the orbit
                 4. **Set a custom date/time** to see past or future positions
                 5. **Use filters** to find stars by position, magnitude, etc
 
-                ##### For "OK" calibration binaries, suggest filtering by σ_θ
-
-                ### Technical Details:
+                ### Technical info:
+                - The relative orbit calculation (ρ, θ) uses the formula in "Astronomical Algorithms," 2nd ed., Ch. 57, by J. Meeus.
                 - Position angles follow the IAU convention (North = 0°, East = 90°)
                 - All times are in UTC
-                - Uncertainties are propagated using Monte Carlo sampling assuming Gaussian errors
+                - Orbits/positions are calculated by sampling from published elements and their uncertainties, assuming Gaussian errors
 
-                Direct bug reports, feature requests, etc to https://github.com/mb2448/ok-binaries/issues
+                ### Validation:
+                Computed ephemerides were cross-checked against the WDS's 6th orbit ephemerides file, containing calculations at 2023.0, 2024.0, etc, whenever the stars appeared in both lists.  No discrepancies were found.
+
+
+                *Direct bug reports, feature requests, etc to https://github.com/mb2448/ok-binaries/issues*
                 """)
+
+               # Apply custom CSS just for the about section
+               st.markdown("""
+                <style>
+                    div[data-testid="stMarkdownContainer"] p {
+                        font-size: 18px;
+                    }
+                    div[data-testid="stMarkdownContainer"] li {
+                        font-size: 18px;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
 
                if st.button("Close", key="close_about"):
                     st.session_state.show_about = False
