@@ -30,7 +30,6 @@ python wds_parser.py
 ```
 
 This will:
-- Download the latest data from the WDS catalog
 - Process orbital elements and calculate current positions
 - Create a new CSV file with today's date
 - Keep only the 7 most recent data files
@@ -42,7 +41,11 @@ This will:
 You can generate orbit plots directly from the command line without using the Streamlit interface:
 
 ### Basic Usage
-
+First run:
+```bash
+python wds_parser.py
+```
+this will generate a csv file with the current positions.  Then run:
 ```bash
 python wds_binary_plotter.py <csv_file> <identifier>
 ```
