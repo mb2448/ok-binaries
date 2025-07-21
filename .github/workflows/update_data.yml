@@ -19,6 +19,15 @@ jobs:
       with:
         persist-credentials: true
         fetch-depth: 0
+        # Force checkout to main branch
+        ref: main
+
+    - name: Force sync with remote
+      run: |
+        # Ensure we're on the latest main branch
+        git fetch origin main
+        git reset --hard origin/main
+        echo "Synced with remote main branch"
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -51,22 +60,21 @@ jobs:
         echo "Parser completed"
         ls -la binary_positions_*.csv
 
-    - name: Commit and push changes (NO PULL)
+    - name: Commit and force push
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        # Add all changes (new files + deletions from cleanup)
+        # Add all changes
         git add -A
 
-        # Check if there are any changes to commit
+        # Check if there are changes to commit
         if ! git diff --staged --quiet; then
           git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
 
-          # Push directly without pulling - this avoids merge conflicts
-          git push origin main
-          echo "Changes committed and pushed successfully"
+          # Force push to avoid any merge conflicts
+          git push --force-with-lease origin main
+          echo "Changes force-pushed successfully"
         else
           echo "No changes to commit"
         fi
-
