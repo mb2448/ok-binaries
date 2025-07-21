@@ -19,6 +19,12 @@ jobs:
       with:
         persist-credentials: true
         fetch-depth: 0
+        # Always get the latest version
+        ref: main
+
+    - name: Pull latest changes
+      run: |
+        git pull origin main
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -30,6 +36,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy scipy tqdm
 
+    - name: Clean up old CSV files
+      run: |
+        # Remove binary_positions files older than 3 days
+        echo "Removing binary_positions files older than 3 days..."
+        find . -name "binary_positions*.csv" -type f -mtime +3 -delete
+
     - name: Run WDS parser
       run: |
         echo "Running WDS parser at $(date)"
@@ -37,19 +49,10 @@ jobs:
         echo "Parser completed"
         ls -la binary_positions_*.csv
 
-    - name: Clean up old CSV files
-      run: |
-        # Remove binary_positions files older than 3 days
-        echo "Removing binary_positions files older than 3 days..."
-        find . -name "binary_positions*.csv" -type f -mtime +3 -delete
-
     - name: Commit and push if changed
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-
-        # Pull latest changes first
-        git pull origin main
 
         # Add binary_positions CSV files
         git add binary_positions_*.csv
@@ -62,4 +65,3 @@ jobs:
         else
           echo "No changes to commit"
         fi
-
