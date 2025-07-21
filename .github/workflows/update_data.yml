@@ -20,36 +20,29 @@ jobs:
         persist-credentials: true
         fetch-depth: 0
 
-    - name: Sync with remote and cleanup FIRST
+    - name: Clean slate - remove all old CSV files
       run: |
-        echo "=== SYNC AND CLEANUP BEFORE GENERATING NEW FILES ==="
+        echo "=== CLEAN SLATE: Removing all binary_positions CSV files ==="
 
-        # Pull latest changes first
+        # Remove any local CSV files that might cause conflicts
+        rm -f binary_positions_*.csv
+        echo "Removed all local binary_positions files"
+
+        # Pull latest changes
         git pull origin main
+        echo "Synced with remote"
 
-        # Now cleanup old files from the synced repository
-        echo "Current date: $(date)"
-        CUTOFF_DATE=$(date -d '3 days ago' '+%Y-%m-%d')
-        echo "Cutoff date (files older than this will be deleted): $CUTOFF_DATE"
+        # Remove all CSV files from the repository too
+        git rm -f binary_positions_*.csv 2>/dev/null || echo "No binary_positions files to remove from git"
 
-        echo "Files before cleanup:"
-        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
-
-        # Delete old files
-        for file in binary_positions_*.csv; do
-          if [[ -f "$file" ]]; then
-            FILE_DATE=$(echo "$file" | sed 's/binary_positions_\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)\.csv/\1/')
-            if [[ "$FILE_DATE" < "$CUTOFF_DATE" ]]; then
-              echo "Deleting old file: $file (date: $FILE_DATE)"
-              rm "$file"
-            else
-              echo "Keeping recent file: $file (date: $FILE_DATE)"
-            fi
-          fi
-        done
-
-        echo "Files after cleanup:"
-        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
+        # Commit the cleanup if there were files to remove
+        if ! git diff --staged --quiet; then
+          git commit -m "Clean slate: Remove all old binary_positions CSV files"
+          git push origin main
+          echo "Pushed cleanup commit"
+        else
+          echo "No files to clean up"
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -68,19 +61,24 @@ jobs:
         echo "Parser completed"
         ls -la binary_positions_*.csv
 
-    - name: Commit and push if changed
+    - name: Commit and push new file
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        # Add binary_positions CSV files
+        # Add the new CSV file
         git add binary_positions_*.csv
 
-        # Check if there are any changes to commit
+        # Commit the new file
         if ! git diff --staged --quiet; then
-          git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
+          git commit -m "Add fresh binary positions for $(date +'%Y-%m-%d')"
           git push origin main
-          echo "Changes committed and pushed"
+          echo "New file committed and pushed"
         else
-          echo "No changes to commit"
+          echo "No new files to commit"
         fi
+
+    - name: Set up future cleanup
+      run: |
+        echo "From now on, this workflow will keep only the 3 most recent files"
+        echo "Next run will implement proper cleanup of files older than 3 days"
