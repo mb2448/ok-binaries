@@ -20,36 +20,25 @@ jobs:
         persist-credentials: true
         fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
+    - name: Sync with remote and cleanup FIRST
       run: |
-        python -m pip install --upgrade pip
-        pip install pandas numpy scipy tqdm
+        echo "=== SYNC AND CLEANUP BEFORE GENERATING NEW FILES ==="
 
-    - name: Clean up old CSV files
-      run: |
-        echo "=== CLEANUP PROCESS ==="
+        # Pull latest changes first
+        git pull origin main
+
+        # Now cleanup old files from the synced repository
         echo "Current date: $(date)"
-
-        # Show all binary_positions files before cleanup
-        echo "Files before cleanup:"
-        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
-
-        # Calculate cutoff date (3 days ago)
         CUTOFF_DATE=$(date -d '3 days ago' '+%Y-%m-%d')
         echo "Cutoff date (files older than this will be deleted): $CUTOFF_DATE"
 
-        # Delete files older than 3 days using date comparison
+        echo "Files before cleanup:"
+        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
+
+        # Delete old files
         for file in binary_positions_*.csv; do
           if [[ -f "$file" ]]; then
-            # Extract date from filename (assumes format: binary_positions_YYYY-MM-DD.csv)
             FILE_DATE=$(echo "$file" | sed 's/binary_positions_\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)\.csv/\1/')
-
-            # Compare dates
             if [[ "$FILE_DATE" < "$CUTOFF_DATE" ]]; then
               echo "Deleting old file: $file (date: $FILE_DATE)"
               rm "$file"
@@ -62,11 +51,21 @@ jobs:
         echo "Files after cleanup:"
         ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy scipy tqdm
+
     - name: Run WDS parser
       run: |
         echo "Running WDS parser at $(date)"
         python wds_parser.py
-        echo "parser completed"
+        echo "Parser completed"
         ls -la binary_positions_*.csv
 
     - name: Commit and push if changed
@@ -85,4 +84,3 @@ jobs:
         else
           echo "No changes to commit"
         fi
-
