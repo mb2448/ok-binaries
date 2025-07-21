@@ -20,30 +20,6 @@ jobs:
         persist-credentials: true
         fetch-depth: 0
 
-    - name: Clean slate - remove all old CSV files
-      run: |
-        echo "=== CLEAN SLATE: Removing all binary_positions CSV files ==="
-
-        # Remove any local CSV files that might cause conflicts
-        rm -f binary_positions_*.csv
-        echo "Removed all local binary_positions files"
-
-        # Pull latest changes
-        git pull origin main
-        echo "Synced with remote"
-
-        # Remove all CSV files from the repository too
-        git rm -f binary_positions_*.csv 2>/dev/null || echo "No binary_positions files to remove from git"
-
-        # Commit the cleanup if there were files to remove
-        if ! git diff --staged --quiet; then
-          git commit -m "Clean slate: Remove all old binary_positions CSV files"
-          git push origin main
-          echo "Pushed cleanup commit"
-        else
-          echo "No files to clean up"
-        fi
-
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -54,6 +30,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy scipy tqdm
 
+    - name: Clean up old CSV files (keep only 7 most recent)
+      run: |
+        echo "Keeping only the 7 most recent binary_positions files..."
+        echo "Files before cleanup:"
+        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
+
+        # Keep only the 7 most recent files
+        if ls binary_positions*.csv >/dev/null 2>&1; then
+          ls -t binary_positions*.csv | tail -n +8 | xargs -r rm -v
+        fi
+
+        echo "Files after cleanup:"
+        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
+
     - name: Run WDS parser
       run: |
         echo "Running WDS parser at $(date)"
@@ -61,24 +51,22 @@ jobs:
         echo "Parser completed"
         ls -la binary_positions_*.csv
 
-    - name: Commit and push new file
+    - name: Commit and push changes (NO PULL)
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        # Add the new CSV file
-        git add binary_positions_*.csv
+        # Add all changes (new files + deletions from cleanup)
+        git add -A
 
-        # Commit the new file
+        # Check if there are any changes to commit
         if ! git diff --staged --quiet; then
-          git commit -m "Add fresh binary positions for $(date +'%Y-%m-%d')"
+          git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
+
+          # Push directly without pulling - this avoids merge conflicts
           git push origin main
-          echo "New file committed and pushed"
+          echo "Changes committed and pushed successfully"
         else
-          echo "No new files to commit"
+          echo "No changes to commit"
         fi
 
-    - name: Set up future cleanup
-      run: |
-        echo "From now on, this workflow will keep only the 3 most recent files"
-        echo "Next run will implement proper cleanup of files older than 3 days"
