@@ -19,15 +19,31 @@ jobs:
       with:
         persist-credentials: true
         fetch-depth: 0
-        # Force checkout to main branch
-        ref: main
 
-    - name: Force sync with remote
+    - name: Nuclear option - remove ALL CSV files to avoid conflicts
       run: |
-        # Ensure we're on the latest main branch
-        git fetch origin main
-        git reset --hard origin/main
-        echo "Synced with remote main branch"
+        echo "=== NUCLEAR OPTION: Remove all CSV files first ==="
+
+        # Remove any local CSV files
+        rm -f binary_positions_*.csv
+        echo "Removed local CSV files"
+
+        # Pull latest changes (now no conflicts possible)
+        git pull origin main
+        echo "Pulled latest changes"
+
+        # Remove ALL CSV files from the repository
+        git rm -f binary_positions_*.csv 2>/dev/null || echo "No CSV files in repo to remove"
+
+        # Commit the removal if there were files to remove
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+        if ! git diff --staged --quiet; then
+          git commit -m "Remove all CSV files to prevent conflicts"
+          git push origin main
+          echo "Pushed removal commit"
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -39,20 +55,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy scipy tqdm
 
-    - name: Clean up old CSV files (keep only 7 most recent)
-      run: |
-        echo "Keeping only the 7 most recent binary_positions files..."
-        echo "Files before cleanup:"
-        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
-
-        # Keep only the 7 most recent files
-        if ls binary_positions*.csv >/dev/null 2>&1; then
-          ls -t binary_positions*.csv | tail -n +8 | xargs -r rm -v
-        fi
-
-        echo "Files after cleanup:"
-        ls -la binary_positions*.csv 2>/dev/null || echo "No binary_positions files found"
-
     - name: Run WDS parser
       run: |
         echo "Running WDS parser at $(date)"
@@ -60,21 +62,19 @@ jobs:
         echo "Parser completed"
         ls -la binary_positions_*.csv
 
-    - name: Commit and force push
+    - name: Add new file only
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
 
-        # Add all changes
-        git add -A
+        # Add only the new CSV file
+        git add binary_positions_*.csv
 
-        # Check if there are changes to commit
+        # Commit the new file
         if ! git diff --staged --quiet; then
-          git commit -m "Update binary positions for $(date +'%Y-%m-%d')"
-
-          # Force push to avoid any merge conflicts
-          git push --force-with-lease origin main
-          echo "Changes force-pushed successfully"
+          git commit -m "Add binary positions for $(date +'%Y-%m-%d')"
+          git push origin main
+          echo "New file committed and pushed"
         else
-          echo "No changes to commit"
+          echo "No new files to commit"
         fi
