@@ -66,7 +66,7 @@ jobs:
       run: |
         echo "Running WDS parser at $(date)"
         python wds_parser.py
-        echo "Parser completed"
+        echo "parser completed"
         ls -la binary_positions_*.csv
 
     - name: Commit and push if changed
