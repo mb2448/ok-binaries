@@ -32,7 +32,7 @@ jobs:
 
     - name: Nuclear option - remove ALL CSV files to avoid conflicts
       run: |
-        echo "=== NUCLEAR OPTION: Remove all CSV files first ==="
+        echo "===- NUCLEAR OPTION: Remove all CSV files first ==="
 
         # Remove any local CSV files
         rm -f binary_positions_*.csv
